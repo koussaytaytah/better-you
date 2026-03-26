@@ -1,0 +1,67 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users can read and write their own data
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Daily logs - users can only modify their own logs
+    match /daily_logs/{logId} {
+      allow read, write: if request.auth != null &&
+        resource.data.userId == request.auth.uid;
+      allow create: if request.auth != null &&
+        request.auth.uid == request.resource.data.userId;
+    }
+
+    // Posts - anyone can read, only authenticated users can create
+    match /posts/{postId} {
+      allow read: if true;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null &&
+        request.auth.uid == resource.data.userId;
+      allow delete: if request.auth != null &&
+        request.auth.uid == resource.data.userId;
+    }
+
+    // Comments - similar to posts
+    match /comments/{commentId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // Messages - users can read/write in rooms they're part of
+    match /messages/{messageId} {
+      allow read, write: if request.auth != null &&
+        exists(/databases/$(database)/documents/chat_rooms/$(resource.data.roomId)) &&
+        get(/databases/$(database)/documents/chat_rooms/$(resource.data.roomId)).data.participants.hasAny([request.auth.uid]);
+    }
+
+    // Chat rooms
+    match /chat_rooms/{roomId} {
+      allow read: if request.auth != null &&
+        resource.data.participants.hasAny([request.auth.uid]);
+      allow create: if request.auth != null;
+      allow update: if request.auth != null &&
+        resource.data.participants.hasAny([request.auth.uid]);
+    }
+
+    // Notifications - users can only access their own
+    match /notifications/{notificationId} {
+      allow read, write: if request.auth != null &&
+        request.auth.uid == resource.data.userId;
+    }
+
+    // Badges - users can only access their own
+    match /badges/{badgeId} {
+      allow read, write: if request.auth != null &&
+        request.auth.uid == resource.data.userId;
+    }
+
+    // Weekly progress - users can only access their own
+    match /weekly_progress/{progressId} {
+      allow read, write: if request.auth != null &&
+        request.auth.uid == resource.data.userId;
+    }
+  }
+}
