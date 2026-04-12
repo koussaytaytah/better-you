@@ -1,0 +1,42 @@
+{
+  "settings": "Settings",
+  "appearance": "Appearance",
+  "darkMode": "Dark Mode",
+  "darkModeSubtitle": "Toggle dark or light theme",
+  "language": "Language",
+  "currentLanguage": "Current Language",
+  "english": "English",
+  "arabic": "Arabic (العربية)",
+  "about": "About",
+  "appVersion": "App Version",
+  "pageNotFound": "Page not found",
+  "welcomeBack": "Welcome back, {name}!",
+  "@welcomeBack": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "continueJourney": "Continue your health journey today",
+  "cigarettes": "Cigarettes",
+  "calories": "Calories",
+  "alcohol": "Alcohol",
+  "exercise": "Exercise",
+  "water": "Water",
+  "sleep": "Sleep",
+  "steps": "Steps",
+  "quickActions": "Quick Actions",
+  "trackHabits": "Track Habits",
+  "statistics": "Statistics",
+  "community": "Community",
+  "aiAssistant": "AI Assistant",
+  "bmiCalculator": "BMI Calculator",
+  "calendar": "Calendar",
+  "quests": "Quests",
+  "logout": "Logout",
+  "profile": "Profile",
+  "healthPermissionRequired": "Health Permissions Required",
+  "healthPermissionSubtitle": "Grant permission to automatically track your steps and sleep.",
+  "grantPermission": "Grant Permission"
+}

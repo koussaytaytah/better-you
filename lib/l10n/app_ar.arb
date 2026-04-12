@@ -1,0 +1,42 @@
+{
+  "settings": "الإعدادات",
+  "appearance": "المظهر",
+  "darkMode": "الوضع الداكن",
+  "darkModeSubtitle": "التبديل بين السمة الداكنة أو الفاتحة",
+  "language": "اللغة",
+  "currentLanguage": "اللغة الحالية",
+  "english": "الإنجليزية (English)",
+  "arabic": "العربية",
+  "about": "حول",
+  "appVersion": "إصدار التطبيق",
+  "pageNotFound": "الصفحة غير موجودة",
+  "welcomeBack": "مرحباً بعودتك، {name}!",
+  "@welcomeBack": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "continueJourney": "واصل رحلتك الصحية اليوم",
+  "cigarettes": "السجائر",
+  "calories": "السعرات الحرارية",
+  "alcohol": "الكحول",
+  "exercise": "التمارين",
+  "water": "الماء",
+  "sleep": "النوم",
+  "steps": "الخطوات",
+  "quickActions": "إجراءات سريعة",
+  "trackHabits": "تتبع العادات",
+  "statistics": "الإحصائيات",
+  "community": "المجتمع",
+  "aiAssistant": "مساعد الذكاء الاصطناعي",
+  "bmiCalculator": "حاسبة BMI",
+  "calendar": "التقويم",
+  "quests": "المهام",
+  "logout": "تسجيل الخروج",
+  "profile": "الملف الشخصي",
+  "healthPermissionRequired": "مطلوب أذونات الصحة",
+  "healthPermissionSubtitle": "امنح الإذن لتتبع خطواتك ونومك تلقائياً.",
+  "grantPermission": "منح الإذن"
+}

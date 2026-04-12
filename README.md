@@ -7,8 +7,10 @@ A comprehensive Flutter application for health and lifestyle improvement, featur
 - **User Authentication**: Firebase Auth with role-based access (User, Coach, Doctor)
 - **Habit Tracking**: Daily logging of smoking, alcohol, diet, and exercise
 - **Statistics Dashboard**: Interactive charts showing progress over time
-- **AI Assistant**: Hugging Face integration for health advice
-- **Community Feed**: Social interaction with posts, comments, and likes
+- **AI Assistant**: Groq API (Llama 3.3 70B) for health advice, image analysis, and voice transcription
+- **Community Feed**: Social interaction with posts, images, and safety features (Block/Report)
+- **Architecture**: Clean Architecture with Riverpod and Repository Pattern
+- **Monitoring**: Centralized logging and error handling
 - **Chat System**: Global chat and private consultations
 - **Progress Calendar**: Visual calendar showing habit streaks and achievements
 - **Gamification**: Badges and streaks for motivation
@@ -20,7 +22,9 @@ A comprehensive Flutter application for health and lifestyle improvement, featur
 - **State Management**: Riverpod
 - **Charts**: fl_chart
 - **Fonts**: Google Fonts (Poppins)
-- **AI**: Hugging Face API
+- **AI**: Groq API (Llama 3.3, Whisper)
+- **Environment**: flutter_dotenv for secure API key management
+- **Logging**: logger package for centralized diagnostics
 
 ## Setup Instructions
 
@@ -46,10 +50,11 @@ A comprehensive Flutter application for health and lifestyle improvement, featur
 
 4. Configure Firestore Security Rules (see `firestore.rules`)
 
-### 3. Hugging Face Setup
+### 3. Environment Setup
 
-1. Get an API token from https://huggingface.co/settings/tokens
-2. Replace `YOUR_HUGGING_FACE_TOKEN` in `lib/core/constants/app_constants.dart`
+1. Create a `.env` file in the root directory.
+2. Add your Groq API token: `GROQ_TOKEN=your_token_here`
+3. The `.env` file is excluded from git for security.
 
 ### 4. Installation
 
