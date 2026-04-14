@@ -455,6 +455,7 @@ class _CommunityFeedScreenState extends ConsumerState<CommunityFeedScreen> {
       case UserRole.admin:
         return Colors.red;
       case UserRole.user:
+      case UserRole.initial:
         return AppColors.primary;
     }
   }

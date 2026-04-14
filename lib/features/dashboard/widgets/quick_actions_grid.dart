@@ -14,7 +14,9 @@ import '../screens/progress_calendar_screen.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../community/screens/leaderboard_screen.dart';
+import '../../community/screens/professionals_directory_screen.dart';
 import '../../settings/screens/app_limits_screen.dart';
+import '../../../../shared/widgets/glass_card.dart';
 
 // Since the router hasn't been completely refactored to go_router natively for these nested routes,
 // I will keep Navigator.push for compatibility or use go_router if context.go works.
@@ -77,6 +79,12 @@ class QuickActionsGrid extends StatelessWidget {
           'screen': const CommunityFeedScreen(),
         },
         {
+          'title': 'Hire Pros',
+          'icon': Icons.medical_services,
+          'color': const Color(0xFF9C27B0), // Purple
+          'screen': const ProfessionalsDirectoryScreen(),
+        },
+        {
           'title': 'AI Chatbot',
           'icon': Icons.smart_toy,
           'color': const Color(0xFF2979FF),
@@ -110,7 +118,9 @@ class QuickActionsGrid extends StatelessWidget {
       itemBuilder: (context, index) {
         final action = actions[index];
         final color = action['color'] as Color;
-        return GestureDetector(
+        return GlassCard(
+          borderRadius: 20,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
           onTap: () {
             final screenWidget = action['screen'] as Widget?;
             if (screenWidget != null) {
@@ -120,21 +130,8 @@ class QuickActionsGrid extends StatelessWidget {
               );
             }
           },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            decoration: BoxDecoration(
-              color: Theme.of(context).cardColor,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
+          child: Row(
+            children: [
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
@@ -162,7 +159,6 @@ class QuickActionsGrid extends StatelessWidget {
                 ),
               ],
             ),
-          ),
         );
       },
     );

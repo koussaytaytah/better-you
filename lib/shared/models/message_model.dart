@@ -8,6 +8,9 @@ class Message {
   final String senderRole;
   final String message;
   final DateTime timestamp;
+  final String type; // 'text' or 'audio'
+  final String? mediaUrl;
+  final int? duration;
 
   Message({
     required this.id,
@@ -17,6 +20,9 @@ class Message {
     required this.senderRole,
     required this.message,
     required this.timestamp,
+    this.type = 'text',
+    this.mediaUrl,
+    this.duration,
   });
 
   factory Message.fromFirestore(DocumentSnapshot doc) {
@@ -29,6 +35,9 @@ class Message {
       senderRole: data['senderRole'] ?? 'user',
       message: data['message'],
       timestamp: (data['timestamp'] as Timestamp).toDate(),
+      type: data['type'] ?? 'text',
+      mediaUrl: data['mediaUrl'],
+      duration: data['duration'],
     );
   }
 
@@ -40,6 +49,9 @@ class Message {
       'senderRole': senderRole,
       'message': message,
       'timestamp': Timestamp.fromDate(timestamp),
+      'type': type,
+      'mediaUrl': mediaUrl,
+      'duration': duration,
     };
   }
 }

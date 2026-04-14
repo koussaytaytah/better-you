@@ -20,4 +20,5 @@ abstract class UserRepository {
   Future<List<UserModel>> getTopUsersByXP({int limit = 50});
   Future<void> banUser(String userId);
   Future<void> unbanUser(String userId);
+  Future<void> awardBadge(String userId, String badgeName);
 }

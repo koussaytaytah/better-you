@@ -90,6 +90,45 @@ class GroupQuestsScreen extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(height: 16),
+                    const SizedBox(height: 16),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'Group Progress',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            Text(
+                              '${quest.participantIds.length} Joined',
+                              style: const TextStyle(fontSize: 10, color: Colors.grey),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: LinearProgressIndicator(
+                            value: _calculateAverageProgress(quest),
+                            minHeight: 8,
+                            backgroundColor: Colors.grey.withValues(alpha: 0.1),
+                            valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Average: ${(_calculateAverageProgress(quest) * 100).toInt()}% towards goal',
+                          style: const TextStyle(fontSize: 10, color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
                     Row(
                       children: [
                         const Icon(Icons.group, size: 16, color: Colors.grey),
@@ -250,5 +289,19 @@ class GroupQuestsScreen extends ConsumerWidget {
         'participantProgress.${user.uid}': 0,
       });
     }
+  }
+
+  double _calculateAverageProgress(GroupQuest quest) {
+    if (quest.participantIds.isEmpty) return 0.0;
+    
+    double totalProgressPercentage = 0.0;
+    
+    for (var uid in quest.participantIds) {
+      final daysCompleted = (quest.participantProgress[uid] ?? 0).toDouble();
+      final progress = (daysCompleted / quest.goalDays).clamp(0.0, 1.0);
+      totalProgressPercentage += progress;
+    }
+    
+    return totalProgressPercentage / quest.participantIds.length;
   }
 }

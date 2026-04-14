@@ -43,7 +43,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '726099505354',
     projectId: 'better-you-f6919',
     authDomain: 'better-you-f6919.firebaseapp.com',
-    storageBucket: 'better-you-f6919.firebasestorage.app',
+    storageBucket: 'better-you-f6919.appspot.com',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
@@ -51,6 +51,6 @@ class DefaultFirebaseOptions {
     appId: '1:726099505354:android:0c9155642fa974f5f14433',
     messagingSenderId: '726099505354',
     projectId: 'better-you-f6919',
-    storageBucket: 'better-you-f6919.firebasestorage.app',
+    storageBucket: 'better-you-f6919.appspot.com',
   );
 }

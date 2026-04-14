@@ -42,20 +42,27 @@ class _DoctorOnboardingScreenState
 
   Future<String?> _uploadImage(XFile? file, String folder) async {
     if (file == null) return null;
-    final ref = FirebaseStorage.instance.ref().child(
-      '$folder/${DateTime.now().millisecondsSinceEpoch}.jpg',
+    final user = ref.read(currentUserProvider);
+    final uid = user?.uid ?? 'unknown';
+    final storageRef = FirebaseStorage.instance.ref().child(
+      '$folder/$uid/${DateTime.now().millisecondsSinceEpoch}.jpg',
     );
 
-    if (kIsWeb) {
+    try {
       final bytes = await file.readAsBytes();
-      final uploadTask = await ref.putData(
+      final uploadTask = storageRef.putData(
         bytes,
         SettableMetadata(contentType: 'image/jpeg'),
       );
-      return await uploadTask.ref.getDownloadURL();
-    } else {
-      await ref.putFile(File(file.path));
-      return await ref.getDownloadURL();
+      await uploadTask;
+      
+      // Wait for Firebase metadata consistency
+      await Future.delayed(const Duration(milliseconds: 1500));
+      
+      return await storageRef.getDownloadURL();
+    } catch (e) {
+      debugPrint('Upload Error: $e');
+      rethrow;
     }
   }
 
@@ -92,6 +99,7 @@ class _DoctorOnboardingScreenState
           'verificationImageUrl': certUrl,
           'verificationStatus': 'pending', // Admin will review
           'isVerified': false,
+          'hasCompletedOnboarding': true,
         },
       );
 
@@ -103,8 +111,6 @@ class _DoctorOnboardingScreenState
             ),
           ),
         );
-        // Go to waiting screen or home
-        Navigator.of(context).pushReplacementNamed('/waiting-for-approval');
       }
     } catch (e) {
       if (mounted) {
@@ -122,7 +128,17 @@ class _DoctorOnboardingScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Doctor Onboarding')),
+      appBar: AppBar(
+        title: const Text('Doctor Onboarding'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout, color: Colors.red),
+            onPressed: () => ref.read(authServiceProvider).signOut(),
+            tooltip: 'Sign Out',
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
       body: Form(
         key: _formKey,
         child: SingleChildScrollView(

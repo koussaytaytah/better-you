@@ -293,6 +293,24 @@ class UserRepositoryImpl implements UserRepository {
   }
 
   @override
+  Future<void> awardBadge(String userId, String badgeName) async {
+    final userRef = _firestore.collection('users').doc(userId);
+    await userRef.update({
+      'badges': FieldValue.arrayUnion([badgeName])
+    });
+
+    await _firestore.collection('notifications').add({
+      'toUserId': userId,
+      'fromUserId': 'system',
+      'fromUserName': 'Admin',
+      'type': 'badge_unlocked',
+      'message': 'Admin has awarded you the "$badgeName" badge! 🏆',
+      'timestamp': FieldValue.serverTimestamp(),
+      'isRead': false,
+    });
+  }
+
+  @override
   Future<List<UserModel>> getTopUsersByXP({int limit = 50}) async {
     final snapshot = await _firestore
         .collection('users')

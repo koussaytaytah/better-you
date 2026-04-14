@@ -1,22 +1,27 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:installed_apps/installed_apps.dart';
 import 'package:installed_apps/app_info.dart';
 import '../../../core/constants/app_theme.dart';
+import '../../../shared/providers/auth_provider.dart';
+import '../../../shared/providers/data_provider.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
-class AppLimitsScreen extends StatefulWidget {
+class AppLimitsScreen extends ConsumerStatefulWidget {
   const AppLimitsScreen({super.key});
 
   @override
-  State<AppLimitsScreen> createState() => _AppLimitsScreenState();
+  ConsumerState<AppLimitsScreen> createState() => _AppLimitsScreenState();
 }
 
-class _AppLimitsScreenState extends State<AppLimitsScreen> {
+class _AppLimitsScreenState extends ConsumerState<AppLimitsScreen> {
   List<AppInfo> _installedApps = [];
   Map<String, dynamic> _appLimits = {};
   bool _isLoading = true;
+  String _searchQuery = '';
 
   @override
   void initState() {
@@ -27,14 +32,22 @@ class _AppLimitsScreenState extends State<AppLimitsScreen> {
   Future<void> _loadData() async {
     try {
       final apps = await InstalledApps.getInstalledApps(true, true);
-      final prefs = await SharedPreferences.getInstance();
+      final user = ref.read(currentUserProvider);
       
-      // Load current limits saved for the native service to read
-      final limitsJson = prefs.getString('app_limits') ?? '{}';
+      // Prefer Cloud data, fallback to local prefs
+      Map<String, dynamic> initialLimits = {};
+      
+      if (user != null && user.appLimits.isNotEmpty) {
+        initialLimits = Map<String, dynamic>.from(user.appLimits);
+      } else {
+        final prefs = await SharedPreferences.getInstance();
+        final limitsJson = prefs.getString('app_limits') ?? '{}';
+        initialLimits = json.decode(limitsJson);
+      }
       
       setState(() {
         _installedApps = apps.where((app) => app.packageName != 'com.example.better_you').toList();
-        _appLimits = json.decode(limitsJson);
+        _appLimits = initialLimits;
         _isLoading = false;
       });
     } catch (e) {
@@ -46,23 +59,36 @@ class _AppLimitsScreenState extends State<AppLimitsScreen> {
   }
 
   Future<void> _saveLimits() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('app_limits', json.encode(_appLimits));
-    
-    // The native android accessibility service reads "flutter.app_limits"
-    // SharedPreferences automatically prepends "flutter." so we just save it locally as 'app_limits'.
+    setState(() => _isLoading = true);
+    try {
+      final user = ref.read(currentUserProvider);
+      final prefs = await SharedPreferences.getInstance();
+      
+      // 1. Save to Local Prefs (for Background Service & Native Accessibility)
+      await prefs.setString('app_limits', json.encode(_appLimits));
+      
+      Map<String, bool> lockedStatus = {};
+      _appLimits.forEach((key, value) {
+         lockedStatus[key] = (value['limit'] == 0);
+      });
+      await prefs.setString('locked_apps_status', json.encode(lockedStatus));
 
-    Map<String, bool> lockedStatus = {};
-    _appLimits.forEach((key, value) {
-       // If limit is 0, lock it instantly. Otherwise, wait for background service to lock it when time runs out.
-       lockedStatus[key] = (value['limit'] == 0);
-    });
-    await prefs.setString('locked_apps_status', json.encode(lockedStatus));
+      // 2. Save to Firestore (for Cloud Backup & Admin/Coach visibility)
+      if (user != null) {
+        await ref.read(userRepositoryProvider).updateUserProfile(user.uid, {
+          'appLimits': _appLimits,
+        });
+      }
 
-    if (mounted) {
-       ScaffoldMessenger.of(context).showSnackBar(
-         const SnackBar(content: Text('App Lock Rules Saved!'), backgroundColor: AppColors.success)
-       );
+      if (mounted) {
+         ScaffoldMessenger.of(context).showSnackBar(
+           const SnackBar(content: Text('App Lock Rules Saved & Synced!'), backgroundColor: AppColors.success)
+         );
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Save failed: $e')));
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -150,70 +176,152 @@ class _AppLimitsScreenState extends State<AppLimitsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final filteredApps = _installedApps.where((app) {
+      final name = (app.name ?? '').toLowerCase();
+      final pkg = (app.packageName ?? '').toLowerCase();
+      return name.contains(_searchQuery.toLowerCase()) || pkg.contains(_searchQuery.toLowerCase());
+    }).toList();
+
     return Scaffold(
       appBar: AppBar(
         title: Text('Doom-Scroll Blocker', style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        centerTitle: true,
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : Column(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(16),
-                  color: AppColors.primary.withValues(alpha: 0.1),
+                  padding: const EdgeInsets.all(20),
+                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [AppColors.primary, AppColors.primary.withValues(alpha: 0.8)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primary.withValues(alpha: 0.3),
+                        blurRadius: 12,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
                   child: Row(
                     children: [
-                      const Icon(Icons.shield, color: AppColors.primary, size: 32),
+                      const Icon(Icons.shield_outlined, color: Colors.white, size: 40),
                       const SizedBox(width: 16),
                       Expanded(
-                        child: Text(
-                          'Select apps to block until you finish your daily quests!',
-                          style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Protect Your Focus',
+                              style: GoogleFonts.poppins(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                            ),
+                            Text(
+                              'Select apps to block until you finish your daily quests.',
+                              style: GoogleFonts.poppins(color: Colors.white70, fontSize: 13),
+                            ),
+                          ],
                         ),
                       ),
                     ],
                   ),
                 ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: TextField(
+                    onChanged: (val) => setState(() => _searchQuery = val),
+                    decoration: InputDecoration(
+                      hintText: 'Search apps...',
+                      prefixIcon: const Icon(Icons.search),
+                      filled: true,
+                      fillColor: Colors.grey.withValues(alpha: 0.05),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(15),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                ),
                 Expanded(
                   child: ListView.builder(
-                    itemCount: _installedApps.length,
+                    padding: const EdgeInsets.only(bottom: 24),
+                    itemCount: filteredApps.length,
                     itemBuilder: (context, index) {
-                      final app = _installedApps[index];
+                      final app = filteredApps[index];
                       final isLocked = _appLimits.containsKey(app.packageName);
+                      final int limitMins = _appLimits[app.packageName]?['limit'] ?? 0;
                       
-                      return ListTile(
-                        leading: app.icon != null
-                            ? Image.memory(app.icon!, width: 40, height: 40)
-                            : const Icon(Icons.android, size: 40),
-                        title: Text(app.name ?? 'Unknown App', style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
-                        subtitle: Text(app.packageName ?? ''),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (isLocked)
-                              IconButton(
-                                icon: const Icon(Icons.edit, color: AppColors.primary),
-                                onPressed: () => _showLimitDialog(app),
-                              ),
-                            Switch(
-                              value: isLocked,
-                              activeColor: AppColors.primary,
-                              onChanged: (val) {
-                                if (val) {
-                                  _showLimitDialog(app);
-                                } else {
-                                  setState(() {
-                                    _appLimits.remove(app.packageName);
-                                  });
-                                  _saveLimits();
-                                }
-                              },
+                      return Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(15),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.03),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
                             ),
                           ],
                         ),
-                      );
+                        child: ListTile(
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          leading: Container(
+                            width: 50,
+                            height: 50,
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.withValues(alpha: 0.05),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: app.icon != null
+                                ? Image.memory(app.icon!, fit: BoxFit.contain)
+                                : const Icon(Icons.android, size: 30, color: Colors.grey),
+                          ),
+                          title: Text(
+                            app.name ?? 'Unknown App',
+                            style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 15),
+                          ),
+                          subtitle: Text(
+                            isLocked ? (limitMins == 0 ? '🚫 Instant Block' : '⏳ $limitMins min limit') : 'No limits set',
+                            style: GoogleFonts.poppins(
+                              fontSize: 12, 
+                              color: isLocked ? (limitMins == 0 ? Colors.red : AppColors.primary) : Colors.grey
+                            ),
+                          ),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (isLocked)
+                                IconButton(
+                                  icon: const Icon(Icons.settings_outlined, color: AppColors.primary),
+                                  onPressed: () => _showLimitDialog(app),
+                                ),
+                              Switch(
+                                value: isLocked,
+                                activeColor: AppColors.primary,
+                                onChanged: (val) {
+                                  if (val) {
+                                    _showLimitDialog(app);
+                                  } else {
+                                    setState(() {
+                                      _appLimits.remove(app.packageName);
+                                    });
+                                    _saveLimits();
+                                  }
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      ).animate().fadeIn(duration: 300.ms).slideY(begin: 0.1);
                     },
                   ),
                 ),

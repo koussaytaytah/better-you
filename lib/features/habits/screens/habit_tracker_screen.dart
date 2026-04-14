@@ -10,6 +10,7 @@ import '../../../core/constants/app_theme.dart';
 import '../../../shared/providers/auth_provider.dart';
 import '../../../shared/providers/data_provider.dart';
 import '../../../shared/models/daily_log_model.dart';
+import '../widgets/professional_prescriptions_widget.dart';
 import 'ai_food_detection_screen.dart';
 
 class HabitTrackerScreen extends ConsumerStatefulWidget {
@@ -85,6 +86,7 @@ class _HabitTrackerScreenState extends ConsumerState<HabitTrackerScreen> {
           const SizedBox(height: 32),
           _buildWeeklyQuestTable(user),
           const SizedBox(height: 32),
+          const ProfessionalPrescriptionsWidget(),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [

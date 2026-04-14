@@ -7,6 +7,7 @@ import '../../../shared/providers/auth_provider.dart';
 import '../../../shared/widgets/custom_button.dart';
 import '../../../shared/widgets/custom_text_field.dart';
 import 'register_screen.dart';
+import '../../../core/utils/auth_error_handler.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -59,7 +60,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
       context.go('/dashboard');
     } catch (e) {
-      _showErrorSnackBar('Login failed: ${e.toString()}');
+      _showErrorSnackBar(AuthErrorHandler.getFriendlyErrorMessage(e));
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);

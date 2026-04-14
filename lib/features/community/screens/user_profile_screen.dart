@@ -458,6 +458,7 @@ class UserProfileScreen extends ConsumerWidget {
       case UserRole.admin:
         return Colors.red;
       case UserRole.user:
+      case UserRole.initial:
         return AppColors.primary;
     }
   }

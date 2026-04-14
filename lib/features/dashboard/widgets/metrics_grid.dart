@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../../shared/models/daily_log_model.dart';
 import '../../../../shared/providers/data_provider.dart';
 import '../../../../shared/providers/auth_provider.dart';
+import '../../../../shared/widgets/glass_card.dart';
 
 // Removed invalid settings import
 // Wait, simpleModeProvider is in auth_provider probably.
@@ -120,24 +121,13 @@ class MetricsGrid extends ConsumerWidget {
     bool isDouble,
     double progress,
   ) {
-    return GestureDetector(
+    return GlassCard(
       onTap: () => _showMetricUpdateDialog(context, ref, log, label, field, isDouble),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
-          borderRadius: BorderRadius.circular(30),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+      padding: const EdgeInsets.all(16),
+      borderRadius: 30,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -220,7 +210,6 @@ class MetricsGrid extends ConsumerWidget {
             ),
           ],
         ),
-      ),
     );
   }
 

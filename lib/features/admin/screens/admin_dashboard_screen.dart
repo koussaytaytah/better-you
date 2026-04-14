@@ -1,144 +1,414 @@
+import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:csv/csv.dart' as csv_pkg;
+import 'package:go_router/go_router.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../../../shared/providers/data_provider.dart';
+import '../../../shared/providers/auth_provider.dart';
+import '../../../shared/models/user_model.dart';
+import '../../../core/repositories/user_repository.dart';
 
-class AdminDashboardScreen extends ConsumerWidget {
+class AdminDashboardScreen extends ConsumerStatefulWidget {
   const AdminDashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
+}
+
+class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
+  StreamSubscription? _pendingUsersSub;
+
+  @override
+  void initState() {
+    super.initState();
+    _listenForPendingUsers();
+  }
+
+  void _listenForPendingUsers() {
+    _pendingUsersSub = FirebaseFirestore.instance
+        .collection('users')
+        .where('verificationStatus', isEqualTo: 'pending')
+        .snapshots()
+        .listen((snapshot) {
+      if (snapshot.docChanges.isNotEmpty) {
+        for (var change in snapshot.docChanges) {
+          if (change.type == DocumentChangeType.added) {
+            final data = change.doc.data();
+            if (data != null) {
+              final name = data['name'] ?? 'Someone';
+              final role = data['role'] ?? 'professional';
+              
+              final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+              const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+                'admin_alerts',
+                'Admin Alerts',
+                importance: Importance.max,
+                priority: Priority.high,
+              );
+              const NotificationDetails details = NotificationDetails(android: androidDetails);
+              flutterLocalNotificationsPlugin.show(
+                DateTime.now().millisecond,
+                'New Verification Request',
+                '$name wants to verify as a $role. Review their application now!',
+                details,
+              );
+            }
+          }
+        }
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _pendingUsersSub?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return DefaultTabController(
       length: 4,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Admin Panel'),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.launch),
+              tooltip: 'Switch to User Mode',
+              onPressed: () => context.push('/dashboard'),
+            ),
+            IconButton(
+              icon: const Icon(Icons.logout),
+              tooltip: 'Logout',
+              onPressed: () => ref.read(authServiceProvider).signOut(),
+            ),
+            const SizedBox(width: 8),
+          ],
           bottom: const TabBar(
             isScrollable: true,
             tabs: [
               Tab(text: 'Pending Coaches'),
               Tab(text: 'Pending Doctors'),
-              Tab(text: 'User XP Management'),
+              Tab(text: 'User Management'),
               Tab(text: 'Reports & Bans'),
             ],
           ),
         ),
-        body: TabBarView(
+        body: Column(
           children: [
-            _PendingList(role: 'coach'),
-            _PendingList(role: 'doctor'),
-            _UserXPManagement(),
-            _ReportsTab(),
+            _buildQuickStats(context, ref),
+            Expanded(
+              child: TabBarView(
+                children: [
+                  _PendingList(role: 'coach'),
+                  _PendingList(role: 'doctor'),
+                  _UserManagementTab(),
+                  _ReportsTab(),
+                ],
+              ),
+            ),
           ],
         ),
       ),
     );
   }
+
+  Widget _buildQuickStats(BuildContext context, WidgetRef ref) {
+    return FutureBuilder<QuerySnapshot>(
+      future: FirebaseFirestore.instance.collection('users').get(),
+      builder: (context, snapshot) {
+        final totalUsers = snapshot.data?.docs.length ?? 0;
+        final pendingVerifications = snapshot.data?.docs.where((d) => (d.data() as Map)['verificationStatus'] == 'pending').length ?? 0;
+
+        return Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            children: [
+              _statCard(context, 'Total Users', totalUsers.toString(), Icons.people, Colors.blue),
+              const SizedBox(width: 12),
+              _statCard(context, 'Pending', pendingVerifications.toString(), Icons.verified_user, Colors.orange),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _statCard(BuildContext context, String title, String value, IconData icon, Color color) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withValues(alpha: 0.2)),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: color, size: 24),
+            const SizedBox(width: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+                Text(value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: color)),
+              ],
+            ),
+          ],
+        ),
+      ).animate().fadeIn(duration: 400.ms).slideX(begin: -0.2),
+    );
+  }
 }
 
-class _UserXPManagement extends ConsumerStatefulWidget {
+class _UserManagementTab extends ConsumerStatefulWidget {
   @override
-  ConsumerState<_UserXPManagement> createState() => _UserXPManagementState();
+  ConsumerState<_UserManagementTab> createState() => _UserManagementTabState();
 }
 
-class _UserXPManagementState extends ConsumerState<_UserXPManagement> {
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _xpController = TextEditingController();
+class _UserManagementTabState extends ConsumerState<_UserManagementTab> {
+  final TextEditingController _searchController = TextEditingController();
+  final TextEditingController _amountController = TextEditingController();
+  String _searchQuery = '';
   bool _isLoading = false;
 
-  Future<void> _updateXP() async {
-    final email = _emailController.text.trim();
-    final xpStr = _xpController.text.trim();
-
-    if (email.isEmpty || xpStr.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter both email and XP')),
-      );
-      return;
-    }
-
-    final xp = int.tryParse(xpStr);
-    if (xp == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Invalid XP amount')));
-      return;
-    }
-
+  Future<void> _exportUsersToCSV() async {
     setState(() => _isLoading = true);
-
     try {
-      final userQuery = await FirebaseFirestore.instance
-          .collection('users')
-          .where('email', isEqualTo: email)
-          .limit(1)
-          .get();
-
-      if (userQuery.docs.isEmpty) {
-        if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('User not found')));
-        }
-      } else {
-        final userId = userQuery.docs.first.id;
-        await ref.read(userRepositoryProvider).addXP(userId, xp);
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Successfully added $xp XP to $email')),
-          );
-          _xpController.clear();
-        }
+      final snapshot = await FirebaseFirestore.instance.collection('users').get();
+      List<List<dynamic>> rows = [];
+      
+      // Header
+      rows.add(['UID', 'Name', 'Email', 'Role', 'Level', 'XP', 'Verification']);
+      
+      for (var doc in snapshot.docs) {
+        final data = doc.data();
+        rows.add([
+          doc.id,
+          data['name'] ?? '',
+          data['email'] ?? '',
+          data['role'] ?? '',
+          data['level'] ?? 1,
+          data['xp'] ?? 0,
+          data['verificationStatus'] ?? 'none'
+        ]);
       }
+
+      String csvData = csv_pkg.Csv().encode(rows);
+      final directory = await getTemporaryDirectory();
+      final path = '${directory.path}/better_you_users_${DateTime.now().millisecondsSinceEpoch}.csv';
+      final file = File(path);
+      await file.writeAsString(csvData);
+
+      await Share.shareXFiles([XFile(path)], text: 'Better You User Export');
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error: $e')));
-      }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Export failed: $e')));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
+  Future<void> _awardBadge(String userId, String badgeName) async {
+    try {
+      await ref.read(userRepositoryProvider).awardBadge(userId, badgeName);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Awarded "$badgeName" trophy!')));
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+    }
+  }
+
+  void _showAwardBadgeDialog(String userId) {
+    final badges = ['Elite Member', 'Super Coach', 'Health Guru', 'Community Hero', 'Early Adopter'];
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Grant Trophy'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: badges.map((b) => ListTile(
+            title: Text(b),
+            onTap: () {
+              Navigator.pop(context);
+              _awardBadge(userId, b);
+            },
+          )).toList(),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _performAction(String userId, String action) async {
+    setState(() => _isLoading = true);
+    try {
+      if (action == 'add_xp') {
+        final xpValue = int.tryParse(_amountController.text.trim());
+        if (xpValue == null) throw Exception("Enter a valid number for XP.");
+        await ref.read(userRepositoryProvider).addXP(userId, xpValue);
+        _amountController.clear();
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Added $xpValue XP.')));
+      } else if (action == 'ban') {
+        await ref.read(userRepositoryProvider).banUser(userId);
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('User Banned.')));
+      } else if (action == 'unban') {
+        await FirebaseFirestore.instance.collection('users').doc(userId).update({'isBanned': false, 'warningMessage': null});
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('User Unbanned.')));
+      } else if (action == 'delete') {
+        await FirebaseFirestore.instance.collection('users').doc(userId).delete();
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('User Deleted.')));
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _showUserDialog(String userId, Map<String, dynamic> data) {
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final isBanned = data['isBanned'] == true;
+          return AlertDialog(
+            title: Text(data['name'] ?? 'User Management'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('Email: ${data['email']}'),
+                  Text('Level: ${data['level']} | XP: ${data['xp']}'),
+                  Text('Role: ${data['role']}'),
+                  const Divider(),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: _amountController,
+                    decoration: const InputDecoration(labelText: 'XP Amount', border: OutlineInputBorder()),
+                    keyboardType: TextInputType.number,
+                  ),
+                  const SizedBox(height: 10),
+                  ElevatedButton(
+                    onPressed: () => _performAction(userId, 'add_xp'),
+                    child: const Text('Add XP'),
+                  ),
+                  const SizedBox(height: 10),
+                  ElevatedButton.icon(
+                    onPressed: () => _showAwardBadgeDialog(userId),
+                    icon: const Icon(Icons.emoji_events),
+                    label: const Text('Grant Trophy'),
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.amber),
+                  ),
+                  const Divider(),
+                  ListTile(
+                    title: Text(isBanned ? 'User is BANNED' : 'User is Active'),
+                    trailing: Switch(
+                      value: isBanned,
+                      activeColor: Colors.red,
+                      onChanged: (val) {
+                        Navigator.pop(context);
+                        _performAction(userId, val ? 'ban' : 'unban');
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  ElevatedButton.icon(
+                    onPressed: () async {
+                      final confirm = await showDialog<bool>(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: const Text('HARD DELETE?'),
+                          content: const Text('This will wipe them from Firestore.'),
+                          actions: [
+                            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+                            TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('DELETE', style: TextStyle(color: Colors.red))),
+                          ],
+                        ),
+                      );
+                      if (confirm == true) {
+                        Navigator.pop(context);
+                        _performAction(userId, 'delete');
+                      }
+                    },
+                    icon: const Icon(Icons.delete_forever),
+                    label: const Text('Hard Delete'),
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
+            ],
+          );
+        }
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(24.0),
-      child: Column(
-        children: [
-          TextField(
-            controller: _emailController,
-            decoration: const InputDecoration(
-              labelText: 'User Email',
-              hintText: 'e.g. koussay@gmail.com',
-              border: OutlineInputBorder(),
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: TextField(
+            controller: _searchController,
+            onChanged: (val) => setState(() => _searchQuery = val.toLowerCase()),
+            decoration: InputDecoration(
+              hintText: 'Search by Email or Name...',
+              prefixIcon: const Icon(Icons.search),
+              suffixIcon: IconButton(
+                icon: const Icon(Icons.download),
+                tooltip: 'Export users to CSV',
+                onPressed: _isLoading ? null : _exportUsersToCSV,
+              ),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
             ),
           ),
-          const SizedBox(height: 16),
-          TextField(
-            controller: _xpController,
-            decoration: const InputDecoration(
-              labelText: 'XP Amount to Add',
-              hintText: 'e.g. 10000',
-              border: OutlineInputBorder(),
-            ),
-            keyboardType: TextInputType.number,
+        ),
+        if (_isLoading) const LinearProgressIndicator(),
+        Expanded(
+          child: StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance.collection('users').snapshots(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+              final docs = snapshot.data?.docs ?? [];
+              final filtered = docs.where((doc) {
+                final data = doc.data() as Map<String, dynamic>;
+                final email = (data['email'] ?? '').toString().toLowerCase();
+                final name = (data['name'] ?? '').toString().toLowerCase();
+                return email.contains(_searchQuery) || name.contains(_searchQuery);
+              }).toList();
+
+              return ListView.builder(
+                itemCount: filtered.length,
+                itemBuilder: (context, index) {
+                  final doc = filtered[index];
+                  final data = doc.data() as Map<String, dynamic>;
+                  final isBanned = data['isBanned'] == true;
+                  
+                  return ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: isBanned ? Colors.grey : Colors.blue,
+                      child: Text(data['name']?[0] ?? '?', style: const TextStyle(color: Colors.white)),
+                    ),
+                    title: Text(data['name'] ?? 'No Name'),
+                    subtitle: Text(data['email'] ?? 'No Email'),
+                    trailing: isBanned ? const Icon(Icons.block, color: Colors.red) : null,
+                    onTap: () => _showUserDialog(doc.id, data),
+                  );
+                },
+              );
+            },
           ),
-          const SizedBox(height: 24),
-          SizedBox(
-            width: double.infinity,
-            height: 50,
-            child: ElevatedButton(
-              onPressed: _isLoading ? null : _updateXP,
-              child: _isLoading
-                  ? const CircularProgressIndicator()
-                  : const Text('Add XP'),
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -152,7 +422,6 @@ class _PendingList extends StatelessWidget {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection('users')
-          .where('role', isEqualTo: role)
           .where('verificationStatus', isEqualTo: 'pending')
           .snapshots(),
       builder: (context, snapshot) {
@@ -163,7 +432,14 @@ class _PendingList extends StatelessWidget {
           return Center(child: Text('Error: ${snapshot.error}'));
         }
 
-        final docs = snapshot.data!.docs;
+        final allPending = snapshot.data!.docs;
+        final docs = allPending.where((doc) {
+          final data = doc.data() as Map<String, dynamic>;
+          return data['role'] == role;
+        }).toList();
+
+        if (docs.isEmpty) return Center(child: Text('No pending ${role}s.'));
+
         return ListView.builder(
           itemCount: docs.length,
           itemBuilder: (context, index) {
@@ -173,12 +449,15 @@ class _PendingList extends StatelessWidget {
                 backgroundImage: NetworkImage(data['profileImageUrl'] ?? ''),
               ),
               title: Text(data['name'] ?? 'No name'),
-              subtitle: Text(
-                '${data['specialty'] ?? ''} • ${data['location'] ?? ''}',
-              ),
+              subtitle: Text('${data['specialty'] ?? ''} • ${data['location'] ?? ''}'),
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  IconButton(
+                    icon: const Icon(Icons.description, color: Colors.blue),
+                    onPressed: () => _showCertificate(context, data['certificateImageUrl'] ?? ''),
+                    tooltip: 'View Certificate',
+                  ),
                   IconButton(
                     icon: const Icon(Icons.check, color: Colors.green),
                     onPressed: () => _approveUser(docs[index].id),
@@ -208,6 +487,21 @@ class _PendingList extends StatelessWidget {
       'verificationStatus': 'rejected',
       'isVerified': false,
     });
+  }
+
+  void _showCertificate(BuildContext context, String url) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Professional Certificate'),
+        content: url.isEmpty 
+          ? const Text('No certificate image uploaded.')
+          : InteractiveViewer(child: Image.network(url)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
+        ],
+      ),
+    );
   }
 }
 
@@ -244,47 +538,22 @@ class _ReportsTab extends ConsumerWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           IconButton(
-                            icon: const Icon(
-                              Icons.warning_amber,
-                              color: Colors.orange,
-                            ),
-                            onPressed: () => _showWarnDialog(
-                              context,
-                              ref,
-                              report['reportedId'],
-                              report['id'],
-                            ),
+                            icon: const Icon(Icons.warning_amber, color: Colors.orange),
+                            onPressed: () => _showWarnDialog(context, ref, report['reportedId'], report['id']),
                           ),
                           IconButton(
                             icon: const Icon(Icons.block, color: Colors.red),
-                            onPressed: () => _showBanDialog(
-                              context,
-                              ref,
-                              report['reportedId'],
-                              report['id'],
-                            ),
+                            onPressed: () => _showBanDialog(context, ref, report['reportedId'], report['id']),
                           ),
                           IconButton(
-                            icon: const Icon(
-                              Icons.check_circle_outline,
-                              color: Colors.green,
-                            ),
-                            onPressed: () => _resolveReport(
-                              context,
-                              ref,
-                              report['id'],
-                              'dismissed',
-                            ),
+                            icon: const Icon(Icons.check_circle_outline, color: Colors.green),
+                            onPressed: () => _resolveReport(context, ref, report['id'], 'dismissed'),
                           ),
                         ],
                       )
                     : Text(
                         status.toUpperCase(),
-                        style: TextStyle(
-                          color: status == 'resolved'
-                              ? Colors.green
-                              : Colors.grey,
-                        ),
+                        style: TextStyle(color: status == 'resolved' ? Colors.green : Colors.grey),
                       ),
               ),
             );
@@ -296,12 +565,7 @@ class _ReportsTab extends ConsumerWidget {
     );
   }
 
-  void _showWarnDialog(
-    BuildContext context,
-    WidgetRef ref,
-    String userId,
-    String reportId,
-  ) {
+  void _showWarnDialog(BuildContext context, WidgetRef ref, String userId, String reportId) {
     final controller = TextEditingController();
     showDialog(
       context: context,
@@ -312,17 +576,13 @@ class _ReportsTab extends ConsumerWidget {
           decoration: const InputDecoration(hintText: 'Enter warning message'),
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
           ElevatedButton(
             onPressed: () async {
               final msg = controller.text.trim();
               if (msg.isEmpty) return;
               await ref.read(userRepositoryProvider).warnUser(userId, msg);
-              await ref
-                  .read(socialRepositoryProvider).resolveReport(reportId, 'warned');
+              await ref.read(socialRepositoryProvider).resolveReport(reportId, 'warned');
               if (context.mounted) Navigator.pop(context);
             },
             child: const Text('Send Warning'),
@@ -332,28 +592,19 @@ class _ReportsTab extends ConsumerWidget {
     );
   }
 
-  void _showBanDialog(
-    BuildContext context,
-    WidgetRef ref,
-    String userId,
-    String reportId,
-  ) {
+  void _showBanDialog(BuildContext context, WidgetRef ref, String userId, String reportId) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Ban User'),
         content: const Text('Are you sure you want to ban this user?'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () async {
               await ref.read(userRepositoryProvider).banUser(userId);
-              await ref
-                  .read(socialRepositoryProvider).resolveReport(reportId, 'banned');
+              await ref.read(socialRepositoryProvider).resolveReport(reportId, 'banned');
               if (context.mounted) Navigator.pop(context);
             },
             child: const Text('Ban User'),
@@ -363,12 +614,7 @@ class _ReportsTab extends ConsumerWidget {
     );
   }
 
-  void _resolveReport(
-    BuildContext context,
-    WidgetRef ref,
-    String reportId,
-    String status,
-  ) {
+  void _resolveReport(BuildContext context, WidgetRef ref, String reportId, String status) {
     ref.read(socialRepositoryProvider).resolveReport(reportId, status);
   }
 }

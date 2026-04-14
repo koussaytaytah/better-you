@@ -46,6 +46,14 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
         timestamp: DateTime.now(),
       ),
     );
+    _configureTts();
+  }
+
+  Future<void> _configureTts() async {
+    await _flutterTts.setLanguage("en-US");
+    await _flutterTts.setPitch(1.0);
+    await _flutterTts.setSpeechRate(0.5);
+    await _flutterTts.setVolume(1.0);
   }
 
   @override
@@ -78,101 +86,69 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
 
   Future<void> _startRecording() async {
     try {
-      final hasPermission = await _audioRecorder.hasPermission();
-      if (hasPermission) {
-        if (kIsWeb) {
-          const config = RecordConfig();
-          await _audioRecorder.start(config, path: '');
-          setState(() => _isRecording = true);
-          return;
-        }
-
-        final directory = await getApplicationDocumentsDirectory();
-        _recordingPath =
-            '${directory.path}/recording_${DateTime.now().millisecondsSinceEpoch}.m4a';
-
+      if (await Permission.microphone.request().isGranted) {
+        final directory = await getTemporaryDirectory();
+        _recordingPath = '${directory.path}/recording_${DateTime.now().millisecondsSinceEpoch}.m4a';
         const config = RecordConfig();
         await _audioRecorder.start(config, path: _recordingPath!);
-
         setState(() => _isRecording = true);
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'Microphone permission is required to record voice messages.',
-              ),
-              backgroundColor: AppColors.danger,
-            ),
+            const SnackBar(content: Text('Microphone permission required')),
           );
         }
       }
     } catch (e) {
       debugPrint('Error starting recording: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Could not start recording: $e'),
-            backgroundColor: AppColors.danger,
-          ),
-        );
-      }
     }
   }
 
   Future<void> _stopRecording() async {
     try {
-      if (_isRecording) {
-        final path = await _audioRecorder.stop();
-        setState(() => _isRecording = false);
-
-        if (path != null) {
-          _processVoiceMessage(path);
-        }
+      final path = await _audioRecorder.stop();
+      setState(() => _isRecording = false);
+      if (path != null) {
+        // Add message immediately for feedback
+        final userMsg = ChatMessage(
+          text: "Voice Message",
+          isMe: true,
+          timestamp: DateTime.now(),
+          audioPath: path,
+        );
+        setState(() {
+          _messages.add(userMsg);
+          _isLoading = true;
+        });
+        _scrollToBottom();
+        _processVoiceMessage(path);
       }
     } catch (e) {
       debugPrint('Error stopping recording: $e');
-      setState(() => _isRecording = false);
-    }
-  }
-
-  void _handleMicTap() {
-    if (_isRecording) {
-      _stopRecording();
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Long press the microphone to record your message.'),
-          duration: Duration(seconds: 2),
-        ),
-      );
     }
   }
 
   Future<void> _processVoiceMessage(String path) async {
-    setState(() => _isLoading = true);
-
     final transcription = await ref
         .read(aiServiceProvider)
         .transcribeAudio(path);
 
     if (transcription != null && transcription.isNotEmpty) {
-      // Don't call _sendMessage directly, handle it here to avoid double UI addition
       final user = ref.read(currentUserProvider);
       final todayLog = ref.read(todayLogProvider).value;
 
+      // Update the "Voice Message" placeholder with actual transcription
       setState(() {
-        _messages.add(
-          ChatMessage(
-            text: transcription,
+        final index = _messages.lastIndexWhere((m) => m.audioPath == path);
+        if (index != -1) {
+          _messages[index] = ChatMessage(
+            text: '🎤 $transcription',
             isMe: true,
-            timestamp: DateTime.now(),
+            timestamp: _messages[index].timestamp,
             audioPath: path,
-          ),
-        );
-        _isLoading = true;
+          );
+        }
       });
-      _scrollToBottom();
 
       final response = await ref
           .read(aiServiceProvider)
@@ -187,8 +163,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
       _scrollToBottom();
     } else {
       setState(() => _isLoading = false);
-      if (!context.mounted) return;
-      // ignore: use_build_context_synchronously
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Could not understand the audio. Please try again.'),
@@ -309,34 +284,53 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
         children: [
           Row(
             children: [
-              GestureDetector(
-                onTap: _handleMicTap,
-                onLongPress: _startRecording,
-                onLongPressUp: _stopRecording,
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: _isRecording
-                        ? AppColors.danger.withValues(alpha: 0.1)
-                        : Colors.transparent,
-                    shape: BoxShape.circle,
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                   if (_isRecording)
+                    ...[1, 2, 3].map((i) => Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: AppColors.danger.withValues(alpha: 0.2),
+                        ),
+                      ).animate(onPlay: (c) => c.repeat()).scale(
+                        duration: 1200.ms,
+                        delay: (400 * i).ms,
+                        begin: const Offset(1, 1),
+                        end: const Offset(2.5, 2.5),
+                        curve: Curves.easeOut,
+                      ).fadeOut()),
+                  GestureDetector(
+                    onLongPress: _startRecording,
+                    onLongPressUp: _stopRecording,
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: _isRecording
+                            ? AppColors.danger
+                            : AppColors.background,
+                        shape: BoxShape.circle,
+                        boxShadow: _isRecording ? [
+                          BoxShadow(
+                            color: AppColors.danger.withValues(alpha: 0.4),
+                            blurRadius: 20,
+                            spreadRadius: 5,
+                          )
+                        ] : null,
+                      ),
+                      child: Icon(
+                        Icons.mic,
+                        color: _isRecording ? Colors.white : AppColors.primary,
+                      ),
+                    ).animate(target: _isRecording ? 1 : 0).scale(
+                          begin: const Offset(1, 1),
+                          end: const Offset(1.3, 1.3),
+                          duration: 300.ms,
+                        ),
                   ),
-                  child:
-                      Icon(
-                            _isRecording ? Icons.mic : Icons.mic_none,
-                            color: _isRecording
-                                ? AppColors.danger
-                                : AppColors.textLight,
-                          )
-                          .animate(target: _isRecording ? 1 : 0)
-                          .scale(
-                            begin: const Offset(1, 1),
-                            end: const Offset(1.3, 1.3),
-                            duration: 500.ms,
-                            curve: Curves.easeInOut,
-                          )
-                          .shimmer(duration: 1000.ms, color: Colors.white54),
-                ),
+                ],
               ),
               IconButton(
                 onPressed: () => _pickImage(ImageSource.camera),
@@ -389,13 +383,34 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
           if (_isRecording)
             Padding(
               padding: const EdgeInsets.only(top: 8.0),
-              child: Text(
-                'Recording... Release to send',
-                style: GoogleFonts.poppins(
-                  color: AppColors.danger,
-                  fontSize: 12,
-                ),
-              ).animate(onPlay: (c) => c.repeat()).shimmer(),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                   ...[0.4, 0.7, 1.0, 0.7, 0.4].map((h) => Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 2),
+                    width: 4,
+                    height: 20 * h,
+                    decoration: BoxDecoration(
+                      color: AppColors.danger,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ).animate(onPlay: (c) => c.repeat(reverse: true)).scaleY(
+                    begin: 0.5,
+                    end: 1.5,
+                    duration: 400.ms,
+                    curve: Curves.easeInOut,
+                  )),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Recording... Release to send',
+                    style: GoogleFonts.poppins(
+                      color: AppColors.danger,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ).animate(onPlay: (c) => c.repeat()).shimmer(),
+                ],
+              ),
             ),
         ],
       ),
@@ -419,69 +434,20 @@ class ChatMessage {
   });
 }
 
-class _ChatBubble extends StatefulWidget {
+class _ChatBubble extends StatelessWidget {
   final ChatMessage message;
   final FlutterTts tts;
 
   const _ChatBubble({required this.message, required this.tts});
 
-  @override
-  State<_ChatBubble> createState() => _ChatBubbleState();
-}
-
-class _ChatBubbleState extends State<_ChatBubble> {
-  final AudioPlayer _audioPlayer = AudioPlayer();
-  bool _isPlaying = false;
-  bool _isSpeaking = false;
-
-  @override
-  void dispose() {
-    _audioPlayer.dispose();
-    super.dispose();
-  }
-
-  Future<void> _playAudio() async {
-    if (widget.message.audioPath != null) {
-      if (_isPlaying) {
-        await _audioPlayer.pause();
-        setState(() => _isPlaying = false);
-      } else {
-        // Stop TTS if speaking
-        await widget.tts.stop();
-        if (mounted) setState(() => _isSpeaking = false);
-
-        await _audioPlayer.play(DeviceFileSource(widget.message.audioPath!));
-        setState(() => _isPlaying = true);
-        _audioPlayer.onPlayerComplete.listen((_) {
-          if (mounted) setState(() => _isPlaying = false);
-        });
-      }
-    }
-  }
-
   Future<void> _speakResponse() async {
-    if (_isSpeaking) {
-      await widget.tts.stop();
-      setState(() => _isSpeaking = false);
-    } else {
-      // Stop audio player if playing
-      await _audioPlayer.stop();
-      if (mounted) setState(() => _isPlaying = false);
-
-      setState(() => _isSpeaking = true);
-      await widget.tts.setLanguage("en-US");
-      await widget.tts.setPitch(1.0);
-      await widget.tts.speak(widget.message.text);
-      widget.tts.setCompletionHandler(() {
-        if (mounted) setState(() => _isSpeaking = false);
-      });
-    }
+    await tts.speak(message.text);
   }
 
   @override
   Widget build(BuildContext context) {
     return Align(
-      alignment: widget.message.isMe
+      alignment: message.isMe
           ? Alignment.centerRight
           : Alignment.centerLeft,
       child: Container(
@@ -491,12 +457,12 @@ class _ChatBubbleState extends State<_ChatBubble> {
           maxWidth: MediaQuery.of(context).size.width * 0.75,
         ),
         decoration: BoxDecoration(
-          color: widget.message.isMe ? AppColors.primary : Colors.white,
+          color: message.isMe ? AppColors.primary : Colors.white,
           borderRadius: BorderRadius.circular(20).copyWith(
-            bottomRight: widget.message.isMe
+            bottomRight: message.isMe
                 ? const Radius.circular(0)
                 : const Radius.circular(20),
-            bottomLeft: widget.message.isMe
+            bottomLeft: message.isMe
                 ? const Radius.circular(20)
                 : const Radius.circular(0),
           ),
@@ -509,74 +475,59 @@ class _ChatBubbleState extends State<_ChatBubble> {
           ],
         ),
         child: Column(
-          crossAxisAlignment: widget.message.isMe
+          crossAxisAlignment: message.isMe
               ? CrossAxisAlignment.end
               : CrossAxisAlignment.start,
           children: [
-            if (widget.message.imagePath != null)
+            if (message.imagePath != null)
               Padding(
                 padding: const EdgeInsets.only(bottom: 8.0),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(12),
-                  child: Image.file(File(widget.message.imagePath!)),
+                  child: Image.file(File(message.imagePath!)),
                 ),
               ),
-            if (widget.message.audioPath != null)
+            if (message.audioPath != null)
               Padding(
                 padding: const EdgeInsets.only(bottom: 8.0),
-                child: InkWell(
-                  onTap: _playAudio,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        _isPlaying
-                            ? Icons.pause_circle_filled
-                            : Icons.play_circle_filled,
-                        color: widget.message.isMe
-                            ? Colors.white
-                            : AppColors.primary,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Voice Message',
-                        style: TextStyle(
-                          color: widget.message.isMe
-                              ? Colors.white
-                              : AppColors.text,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
+                child: AudioMessageBubble(
+                  url: message.audioPath!,
+                  isMe: message.isMe,
                 ),
               ),
-            if (!widget.message.isMe)
+            if (!message.isMe)
               Align(
                 alignment: Alignment.topRight,
-                child: IconButton(
-                  icon: Icon(
-                    _isSpeaking ? Icons.stop_circle : Icons.volume_up,
-                    size: 18,
-                    color: AppColors.primary,
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
                   ),
-                  onPressed: _speakResponse,
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
+                  child: IconButton(
+                    icon: const Icon(
+                      Icons.volume_up_rounded,
+                      size: 20,
+                      color: AppColors.primary,
+                    ),
+                    onPressed: _speakResponse,
+                    padding: const EdgeInsets.all(8),
+                    constraints: const BoxConstraints(),
+                  ),
                 ),
               ),
             Text(
-              widget.message.text,
+              message.text,
               style: GoogleFonts.poppins(
-                color: widget.message.isMe ? Colors.white : AppColors.text,
+                color: message.isMe ? Colors.white : AppColors.text,
                 fontSize: 14,
               ),
             ),
             const SizedBox(height: 4),
             Text(
-              DateFormat('HH:mm').format(widget.message.timestamp),
+              DateFormat('HH:mm').format(message.timestamp),
               style: TextStyle(
-                color: (widget.message.isMe ? Colors.white : AppColors.text)
+                color: (message.isMe ? Colors.white : AppColors.text)
                     .withValues(alpha: 0.5),
                 fontSize: 10,
               ),
@@ -584,6 +535,6 @@ class _ChatBubbleState extends State<_ChatBubble> {
           ],
         ),
       ),
-    ).animate().fadeIn().slideX(begin: widget.message.isMe ? 0.1 : -0.1);
+    ).animate().fadeIn().slideX(begin: message.isMe ? 0.1 : -0.1);
   }
 }

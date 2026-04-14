@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import '../../shared/models/message_model.dart';
 import '../../shared/models/user_model.dart';
 import '../utils/logger.dart';
@@ -6,9 +8,22 @@ import 'user_repository.dart';
 
 class SocialRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseStorage _storage = FirebaseStorage.instance;
   final UserRepository _userRepository;
 
   SocialRepository(this._userRepository);
+
+  Future<String?> uploadVocalMessage(String filePath, String roomId) async {
+    try {
+      final fileName = '${DateTime.now().millisecondsSinceEpoch}.m4a';
+      final ref = _storage.ref().child('vocal_messages/$roomId/$fileName');
+      final uploadTask = await ref.putFile(File(filePath));
+      return await uploadTask.ref.getDownloadURL();
+    } catch (e) {
+      AppLogger.e('Error uploading vocal message', e);
+      return null;
+    }
+  }
 
   Future<String> createChatRoom(
     List<String> participants,
@@ -45,21 +60,29 @@ class SocialRepository {
     return _firestore
         .collection('chat_rooms')
         .where('participants', arrayContains: userId)
-        .orderBy('lastMessageTime', descending: true)
         .snapshots()
-        .map(
-          (snap) =>
-              snap.docs.map((doc) => {'id': doc.id, ...doc.data()}).toList(),
-        );
+        .map((snap) {
+      final rooms = snap.docs.map((doc) => {'id': doc.id, ...doc.data()}).toList();
+      // Sort in-memory to avoid needing a composite index
+      rooms.sort((a, b) {
+        final aTime = (a['lastMessageTime'] as Timestamp?)?.toDate() ?? DateTime(0);
+        final bTime = (b['lastMessageTime'] as Timestamp?)?.toDate() ?? DateTime(0);
+        return bTime.compareTo(aTime);
+      });
+      return rooms;
+    });
   }
 
   Future<void> sendMessage(Message message) async {
     final batch = _firestore.batch();
     final messageRef = _firestore.collection('messages').doc(message.id);
     batch.set(messageRef, message.toFirestore());
+    
     final roomRef = _firestore.collection('chat_rooms').doc(message.roomId);
+    final preview = message.type == 'audio' ? '🎤 Voice Message' : message.message;
+    
     batch.update(roomRef, {
-      'lastMessage': message.message,
+      'lastMessage': preview,
       'lastMessageTime': FieldValue.serverTimestamp(),
     });
     await batch.commit();

@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-enum UserRole { user, coach, doctor, admin }
+enum UserRole { initial, user, coach, doctor, admin }
 
 class UserModel {
   final String uid;
@@ -24,8 +24,10 @@ class UserModel {
   final bool isOnline;
   final List<String> blockedUsers;
   final bool isPremium;
-  final Map<String, dynamic>
-  appLimits; // { package: { 'limit': mins, 'quest': '...' } }
+  final Map<String, dynamic> appLimits;
+  final String verificationStatus; // pending, approved, rejected
+  final bool isVerified;
+  final List<String> assignedProfessionals; // IDs of coaches/doctors
   final bool hasCompletedOnboarding;
 
   UserModel({
@@ -51,6 +53,9 @@ class UserModel {
     this.blockedUsers = const [],
     this.isPremium = false,
     this.appLimits = const {},
+    this.verificationStatus = 'none',
+    this.isVerified = false,
+    this.assignedProfessionals = const [],
     this.hasCompletedOnboarding = false,
   });
 
@@ -84,6 +89,9 @@ class UserModel {
       blockedUsers: data['blockedUsers'] is List ? List<String>.from(data['blockedUsers']) : [],
       isPremium: data['isPremium'] == true,
       appLimits: data['appLimits'] is Map ? Map<String, dynamic>.from(data['appLimits']) : {},
+      verificationStatus: data['verificationStatus']?.toString() ?? 'none',
+      isVerified: data['isVerified'] == true,
+      assignedProfessionals: data['assignedProfessionals'] is List ? List<String>.from(data['assignedProfessionals']) : [],
       hasCompletedOnboarding: data['hasCompletedOnboarding'] == true,
     );
   }
@@ -111,6 +119,9 @@ class UserModel {
       'blockedUsers': blockedUsers,
       'isPremium': isPremium,
       'appLimits': appLimits,
+      'verificationStatus': verificationStatus,
+      'isVerified': isVerified,
+      'assignedProfessionals': assignedProfessionals,
       'hasCompletedOnboarding': hasCompletedOnboarding,
     };
   }
@@ -136,6 +147,9 @@ class UserModel {
     List<String>? blockedUsers,
     bool? isPremium,
     Map<String, dynamic>? appLimits,
+    String? verificationStatus,
+    bool? isVerified,
+    List<String>? assignedProfessionals,
     bool? hasCompletedOnboarding,
   }) {
     return UserModel(
@@ -161,6 +175,9 @@ class UserModel {
       blockedUsers: blockedUsers ?? this.blockedUsers,
       isPremium: isPremium ?? this.isPremium,
       appLimits: appLimits ?? this.appLimits,
+      verificationStatus: verificationStatus ?? this.verificationStatus,
+      isVerified: isVerified ?? this.isVerified,
+      assignedProfessionals: assignedProfessionals ?? this.assignedProfessionals,
       hasCompletedOnboarding: hasCompletedOnboarding ?? this.hasCompletedOnboarding,
     );
   }

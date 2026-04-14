@@ -62,15 +62,35 @@ class _GlobalChatScreenState extends ConsumerState<GlobalChatScreen> {
     final currentUser = ref.watch(currentUserProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      appBar: AppBar(
-        title: Text(
-          'Global Chat',
-          style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isDark 
+            ? [
+                const Color(0xFF0A0F24), // Deep Midnight Blue
+                const Color(0xFF1A112A), // Deep Plum / Purple mix
+                const Color(0xFF0A0F24),
+              ]
+            : [
+                const Color(0xFFF4F7FF), // Soft Ice Blue
+                const Color(0xFFF3E8FF), // Soft Lavender
+                const Color(0xFFE0F7F4), // Mint
+              ],
         ),
       ),
-      body: Column(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          title: Text(
+            'Global Chat',
+            style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+          ),
+        ),
+        body: Column(
         children: [
           Expanded(
             child: messagesAsync.when(
@@ -101,6 +121,7 @@ class _GlobalChatScreenState extends ConsumerState<GlobalChatScreen> {
           ),
           _buildInputArea(isDark),
         ],
+      ),
       ),
     );
   }
@@ -195,12 +216,14 @@ class _GlobalChatScreenState extends ConsumerState<GlobalChatScreen> {
 
   Widget _buildInputArea(bool isDark) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 100),
       decoration: BoxDecoration(
-        color: isDark ? Theme.of(context).cardColor : Colors.white,
-        boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10),
-        ],
+        color: isDark ? Colors.black.withValues(alpha: 0.3) : Colors.white.withValues(alpha: 0.6),
+        border: Border(
+          top: BorderSide(
+            color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
+          ),
+        ),
       ),
       child: Row(
         children: [

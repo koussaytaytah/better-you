@@ -1,11 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
+import 'package:record/record.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_tts/flutter_tts.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_theme.dart';
 import '../../../shared/models/message_model.dart';
 import '../../../shared/models/user_model.dart';
 import '../../../shared/providers/auth_provider.dart';
 import '../../../shared/providers/data_provider.dart';
+import '../widgets/audio_message_bubble.dart';
 
 class ChatRoomScreen extends ConsumerStatefulWidget {
   final String roomId;
@@ -22,11 +30,67 @@ class ChatRoomScreen extends ConsumerStatefulWidget {
 
 class _ChatRoomScreenState extends ConsumerState<ChatRoomScreen> {
   final _messageController = TextEditingController();
+  final _audioRecorder = AudioRecorder();
+  bool _isRecording = false;
+  String? _lastRecordingPath;
 
   @override
   void dispose() {
     _messageController.dispose();
+    _audioRecorder.dispose();
     super.dispose();
+  }
+
+  Future<void> _startRecording() async {
+    try {
+      if (await Permission.microphone.request().isGranted) {
+        final directory = await getTemporaryDirectory();
+        _lastRecordingPath = '${directory.path}/vocal_${DateTime.now().millisecondsSinceEpoch}.m4a';
+        const config = RecordConfig();
+        await _audioRecorder.start(config, path: _lastRecordingPath!);
+        setState(() => _isRecording = true);
+      }
+    } catch (e) {
+      debugPrint('Error starting recording: $e');
+    }
+  }
+
+  Future<void> _stopRecording() async {
+    try {
+      final path = await _audioRecorder.stop();
+      setState(() => _isRecording = false);
+      if (path != null) {
+        _sendVocalMessage(path);
+      }
+    } catch (e) {
+      debugPrint('Error stopping recording: $e');
+    }
+  }
+
+  Future<void> _sendVocalMessage(String path) async {
+    final user = ref.read(currentUserProvider);
+    if (user == null) return;
+
+    final url = await ref.read(socialRepositoryProvider).uploadVocalMessage(path, widget.roomId);
+    if (url == null) return;
+
+    final message = Message(
+      id: const Uuid().v4(),
+      roomId: widget.roomId,
+      senderId: user.uid,
+      senderName: user.name,
+      senderRole: user.role.name,
+      message: 'Voice Message',
+      timestamp: DateTime.now(),
+      type: 'audio',
+      mediaUrl: url,
+    );
+
+    await ref.read(socialRepositoryProvider).sendMessage(message);
+    // Cleanup local file
+    try {
+      File(path).delete();
+    } catch (_) {}
   }
 
   Future<void> _sendMessage() async {
@@ -152,14 +216,19 @@ class _ChatRoomScreenState extends ConsumerState<ChatRoomScreen> {
                         : Colors.grey[200]),
               borderRadius: BorderRadius.circular(16),
             ),
-            child: Text(
-              message.message,
-              style: TextStyle(
-                color: isMe
-                    ? Colors.white
-                    : (isDark ? Colors.white : AppColors.text),
-              ),
-            ),
+            child: message.type == 'audio' && message.mediaUrl != null
+                ? AudioMessageBubble(
+                    url: message.mediaUrl!,
+                    isMe: isMe,
+                  )
+                : Text(
+                    message.message,
+                    style: TextStyle(
+                      color: isMe
+                          ? Colors.white
+                          : (isDark ? Colors.white : AppColors.text),
+                    ),
+                  ),
           ),
         ],
       ),
@@ -186,25 +255,118 @@ class _ChatRoomScreenState extends ConsumerState<ChatRoomScreen> {
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
+            offset: const Offset(0, -4),
           ),
         ],
       ),
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Expanded(
-            child: TextField(
-              controller: _messageController,
-              style: TextStyle(color: isDark ? Colors.white : AppColors.text),
-              decoration: InputDecoration(
-                hintText: 'Type a message...',
-                border: InputBorder.none,
+          Row(
+            children: [
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                   if (_isRecording)
+                    ...[1, 2, 3].map((i) => Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.red.withValues(alpha: 0.2),
+                        ),
+                      ).animate(onPlay: (c) => c.repeat()).scale(
+                        duration: 1200.ms,
+                        delay: (400 * i).ms,
+                        begin: const Offset(1, 1),
+                        end: const Offset(2.5, 2.5),
+                        curve: Curves.easeOut,
+                      ).fadeOut()),
+                  GestureDetector(
+                    onLongPress: _startRecording,
+                    onLongPressUp: _stopRecording,
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: _isRecording ? Colors.red : Colors.transparent,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        _isRecording ? Icons.mic : Icons.mic_none,
+                        color: _isRecording ? Colors.white : AppColors.primary,
+                      ),
+                    ).animate(target: _isRecording ? 1 : 0).scale(
+                          begin: const Offset(1, 1),
+                          end: const Offset(1.3, 1.3),
+                          duration: 300.ms,
+                        ),
+                  ),
+                ],
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: TextField(
+                  controller: _messageController,
+                  enabled: !_isRecording,
+                  style: TextStyle(color: isDark ? Colors.white : AppColors.text),
+                  decoration: InputDecoration(
+                    hintText: _isRecording ? 'Recording...' : 'Type a message...',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(24),
+                      borderSide: BorderSide.none,
+                    ),
+                    filled: true,
+                    fillColor: isDark 
+                        ? Colors.white.withValues(alpha: 0.05) 
+                        : Colors.grey[100],
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 10,
+                    ),
+                  ),
+                  onSubmitted: (_) => _sendMessage(),
+                ),
+              ),
+              const SizedBox(width: 12),
+              if (!_isRecording && _messageController.text.trim().isNotEmpty)
+                IconButton(
+                  onPressed: _sendMessage,
+                  icon: const Icon(Icons.send, color: AppColors.primary),
+                ),
+            ],
+          ),
+          if (_isRecording)
+            Padding(
+              padding: const EdgeInsets.only(top: 12.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                   ...[0.4, 0.7, 1.0, 0.7, 0.4].map((h) => Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 2),
+                    width: 4,
+                    height: 20 * h,
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ).animate(onPlay: (c) => c.repeat(reverse: true)).scaleY(
+                    begin: 0.5,
+                    end: 1.5,
+                    duration: 400.ms,
+                    curve: Curves.easeInOut,
+                  )),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Recording... Release to send',
+                    style: GoogleFonts.poppins(
+                      color: Colors.red,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ).animate(onPlay: (c) => c.repeat()).shimmer(),
+                ],
               ),
             ),
-          ),
-          IconButton(
-            onPressed: _sendMessage,
-            icon: const Icon(Icons.send, color: AppColors.primary),
-          ),
         ],
       ),
     );

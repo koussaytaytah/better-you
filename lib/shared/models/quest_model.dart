@@ -6,6 +6,9 @@ class Quest {
   final String userId;
   final DateTime createdAt;
   final bool isActive;
+  final String? assignedBy;
+  final String? assignedByName;
+  final bool isCoachSuggested;
 
   Quest({
     required this.id,
@@ -13,6 +16,9 @@ class Quest {
     required this.userId,
     required this.createdAt,
     this.isActive = true,
+    this.assignedBy,
+    this.assignedByName,
+    this.isCoachSuggested = false,
   });
 
   factory Quest.fromFirestore(DocumentSnapshot doc) {
@@ -23,6 +29,9 @@ class Quest {
       userId: data['userId'] ?? '',
       createdAt: (data['createdAt'] as Timestamp).toDate(),
       isActive: data['isActive'] ?? true,
+      assignedBy: data['assignedBy']?.toString(),
+      assignedByName: data['assignedByName']?.toString(),
+      isCoachSuggested: data['isCoachSuggested'] == true,
     );
   }
 
@@ -32,6 +41,9 @@ class Quest {
       'userId': userId,
       'createdAt': Timestamp.fromDate(createdAt),
       'isActive': isActive,
+      'assignedBy': assignedBy,
+      'assignedByName': assignedByName,
+      'isCoachSuggested': isCoachSuggested,
     };
   }
 }

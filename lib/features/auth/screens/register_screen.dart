@@ -7,6 +7,7 @@ import '../../../shared/models/user_model.dart';
 import '../../../shared/providers/auth_provider.dart';
 import '../../../shared/widgets/custom_button.dart';
 import '../../../shared/widgets/custom_text_field.dart';
+import '../../../core/utils/auth_error_handler.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -45,12 +46,17 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       );
 
       // Create basic user profile
+      final isMasterAdmin = _emailController.text.trim().toLowerCase() == 'admin@betteryou.com' || 
+                            _emailController.text.trim().toLowerCase() == 'admin2@betteryou.com' ||
+                            _emailController.text.trim().toLowerCase() == 'admin3@betteryou.com';
+      
       final user = UserModel(
         uid: userCredential.user!.uid,
         name: _nameController.text.trim(),
         email: _emailController.text.trim(),
-        role: UserRole.user, // Default role, will be updated in role selection
+        role: isMasterAdmin ? UserRole.admin : UserRole.initial,
         createdAt: DateTime.now(),
+        hasCompletedOnboarding: isMasterAdmin, // Admin bypasses onboarding
       );
 
       await authService.createUserProfile(user);
@@ -62,7 +68,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       if (!context.mounted) return;
       // ignore: use_build_context_synchronously
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Registration failed: ${e.toString()}')),
+        SnackBar(content: Text(AuthErrorHandler.getFriendlyErrorMessage(e))),
       );
     } finally {
       if (mounted) setState(() => _isLoading = false);

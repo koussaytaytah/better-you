@@ -50,6 +50,7 @@ class _QuestsScreenState extends ConsumerState<QuestsScreen> {
     String questId,
     bool? completed,
     DailyLog? todayLog,
+    bool isCoachSuggested,
   ) async {
     final user = ref.read(currentUserProvider);
     if (user == null) return;
@@ -66,13 +67,16 @@ class _QuestsScreenState extends ConsumerState<QuestsScreen> {
     );
     
     if (completed == true) {
-      await ref.read(userRepositoryProvider).addXP(user.uid, 50);
+      // Award Double XP for Coach-Suggested Quests
+      final xpAmount = isCoachSuggested ? 100 : 50;
+      await ref.read(userRepositoryProvider).addXP(user.uid, xpAmount);
       await ref.read(userRepositoryProvider).checkAndAwardBadges(user.uid);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+// ... existing code ...
     final questsAsync = ref.watch(questsProvider);
     final todayLogAsync = ref.watch(todayLogProvider);
     final allLogsAsync = ref.watch(
@@ -362,9 +366,9 @@ class _QuestsScreenState extends ConsumerState<QuestsScreen> {
             border: Border.all(
               color: isCompleted
                   ? AppColors.primary
-                  : (isDark
+                  : (quest.isCoachSuggested ? AppColors.accent : (isDark
                         ? Colors.white.withValues(alpha: 0.05)
-                        : Colors.transparent),
+                        : Colors.transparent)),
               width: 2,
             ),
             boxShadow: [
@@ -384,17 +388,46 @@ class _QuestsScreenState extends ConsumerState<QuestsScreen> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(4),
               ),
-              onChanged: (val) => _toggleQuest(quest.id, val, log),
+              onChanged: (val) => _toggleQuest(quest.id, val, log, quest.isCoachSuggested),
             ),
-            title: Text(
-              quest.title,
-              style: GoogleFonts.poppins(
-                decoration: isCompleted ? TextDecoration.lineThrough : null,
-                color: isCompleted
-                    ? (isDark ? Colors.white38 : AppColors.textLight)
-                    : (isDark ? Colors.white : AppColors.text),
-                fontWeight: FontWeight.w500,
-              ),
+            title: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (quest.isCoachSuggested)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AppColors.accent.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.verified, size: 12, color: AppColors.accent),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Suggested by ${quest.assignedByName ?? "Pro"}',
+                          style: GoogleFonts.poppins(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.accent,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                Text(
+                  quest.title,
+                  style: GoogleFonts.poppins(
+                    decoration: isCompleted ? TextDecoration.lineThrough : null,
+                    color: isCompleted
+                        ? (isDark ? Colors.white38 : AppColors.textLight)
+                        : (isDark ? Colors.white : AppColors.text),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
             ),
             trailing: IconButton(
               icon: const Icon(Icons.delete_outline, color: Colors.grey),

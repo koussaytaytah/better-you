@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_theme.dart';
 import '../../../shared/models/user_model.dart';
@@ -20,6 +21,11 @@ import '../../../core/services/pedometer_service.dart';
 
 import '../widgets/metrics_grid.dart';
 import '../widgets/quick_actions_grid.dart';
+import '../widgets/ai_insight_card.dart';
+import '../../../shared/widgets/sticky_xp_footer.dart';
+import '../../../shared/widgets/ai_pulse_button.dart';
+import 'ai_chatbot_screen.dart';
+
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -125,6 +131,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
             actions: [
               IconButton(
                 icon: Icon(
+                  Icons.mail_outline,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const MessagesInboxScreen()),
+                ),
+              ),
+              IconButton(
+                icon: Icon(
                   Icons.settings_outlined,
                   color: Theme.of(context).colorScheme.onSurface,
                 ),
@@ -141,7 +156,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                   MaterialPageRoute(builder: (_) => const ProfileScreen()),
                 ),
               ),
+              if (user.role == UserRole.admin)
+                 IconButton(
+                  icon: Icon(
+                    Icons.admin_panel_settings,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                  onPressed: () => context.push('/admin'),
+                ),
               const SizedBox(width: 8),
+
             ],
           ),
           body: Container(
@@ -196,7 +220,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                         error: (err, _) => Center(child: Text('Error loading todays logs: $err')),
                       ),
                       const SizedBox(height: 32),
+                      const AIInsightCard(),
+                      const SizedBox(height: 32),
                       _buildDailyProgressCard(),
+                      const SizedBox(height: 32),
+                      StickyXPFooter(user: user),
                       const SizedBox(height: 40),
                     ],
                   ),

@@ -144,6 +144,18 @@ class StatisticsScreen extends ConsumerWidget {
                 _buildChartContainer(
                   _buildLineChart(
                     recentLogs,
+                    (log) => (log.steps ?? 0).toDouble(),
+                    Colors.orange,
+                    10000.0, // Default 10k steps target
+                    context,
+                  ),
+                  'Daily Steps (steps)',
+                  context,
+                ),
+                const SizedBox(height: 24),
+                _buildChartContainer(
+                  _buildLineChart(
+                    recentLogs,
                     (log) => (log.exerciseMinutes ?? 0).toDouble(),
                     AppColors.success,
                     targetExercise,

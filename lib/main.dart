@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:go_router/go_router.dart';
 import 'firebase_options.dart';
 import 'core/services/notification_service.dart';
 import 'shared/models/daily_log_model.dart';
@@ -61,10 +62,14 @@ class _AppInitializerState extends State<AppInitializer> {
 
       // 1. Firebase - absolute priority
       _updateStatus('Initializing Firebase...');
-      await Firebase.initializeApp(
-        options: DefaultFirebaseOptions.currentPlatform,
-      ).timeout(const Duration(seconds: 20));
-      debugPrint('BetterYou: Firebase initialized');
+      if (Firebase.apps.isEmpty) {
+        await Firebase.initializeApp(
+          options: DefaultFirebaseOptions.currentPlatform,
+        ).timeout(const Duration(seconds: 20));
+        debugPrint('BetterYou: Firebase initialized');
+      } else {
+        debugPrint('BetterYou: Firebase already initialized');
+      }
 
       // 2. Dotenv
       _updateStatus('Loading environment...');
@@ -351,6 +356,49 @@ class _UserStatusWrapperState extends ConsumerState<UserStatusWrapper>
   @override
   Widget build(BuildContext context) {
     final lockState = ref.watch(lockProvider);
+
+    // Global listener for Coach Suggested Quests
+    ref.listen(questsProvider, (previous, next) {
+      if (next.hasValue && previous?.hasValue == true) {
+        final prevQuests = previous!.value!;
+        final nextQuests = next.value!;
+        
+        // Find new coach suggested quests
+        final newCoachQuests = nextQuests.where((q) => 
+          q.isCoachSuggested && 
+          !prevQuests.any((pq) => pq.id == q.id)
+        );
+
+        if (newCoachQuests.isNotEmpty) {
+           final quest = newCoachQuests.first;
+           ScaffoldMessenger.of(context).showSnackBar(
+             SnackBar(
+               content: Row(
+                 children: [
+                   const Icon(Icons.verified, color: Colors.white, size: 20),
+                   const SizedBox(width: 12),
+                   Expanded(
+                     child: Text(
+                       'New Quest from ${quest.assignedByName ?? "your Coach"}: "${quest.title}"',
+                       style: const TextStyle(fontWeight: FontWeight.bold),
+                     ),
+                   ),
+                 ],
+               ),
+               backgroundColor: AppColors.accent,
+               behavior: SnackBarBehavior.floating,
+               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+               duration: const Duration(seconds: 5),
+               action: SnackBarAction(
+                 label: 'VIEW',
+                 textColor: Colors.white,
+                 onPressed: () => context.push('/quests'),
+               ),
+             ),
+           );
+        }
+      }
+    });
 
     if (lockState.lockedApp != null) {
       return ScreenTimeLockScreen(
