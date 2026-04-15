@@ -1,4 +1,4 @@
-import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
@@ -28,45 +28,39 @@ class PremiumBottomNav extends StatelessWidget {
         clipBehavior: Clip.none,
         alignment: Alignment.center,
         children: [
-          // Frosted Glass Pill
-          ClipRRect(
-            borderRadius: BorderRadius.circular(32),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-              child: Container(
-                height: 70,
-                decoration: BoxDecoration(
-                  color: isDark 
-                      ? Colors.black.withValues(alpha: 0.6) 
-                      : Colors.white.withValues(alpha: 0.8),
-                  borderRadius: BorderRadius.circular(32),
-                  border: Border.all(
-                    color: isDark 
-                        ? Colors.white.withValues(alpha: 0.1) 
-                        : Colors.black.withValues(alpha: 0.05),
-                    width: 1.5,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.1),
-                      blurRadius: 20,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    _buildNavItem(0, Icons.home_rounded, 'Home', currentIndex, context),
-                    _buildNavItem(1, Icons.people_rounded, 'Social', currentIndex, context),
-                    const SizedBox(width: 60), // Space for AI Orb
-                    _buildNavItem(2, Icons.track_changes_rounded, 'Quests', currentIndex, context),
-                    _buildNavItem(3, Icons.person_rounded, 'Profile', currentIndex, context),
-                  ],
-                ),
+          // Flat High-Performance Pill
+          Container(
+            height: 70,
+            decoration: BoxDecoration(
+              color: isDark 
+                  ? const Color(0xFF1A1A1A) 
+                  : Colors.white,
+              borderRadius: BorderRadius.circular(32),
+              border: Border.all(
+                color: isDark 
+                    ? Colors.white.withValues(alpha: 0.08) 
+                    : Colors.black.withValues(alpha: 0.05),
+                width: 1,
+              ),
+              boxShadow: isDark ? [] : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 16,
+                  offset: const Offset(0, 8),
+                )
+              ],
+            ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _buildNavItem(0, Icons.home_rounded, 'Home', currentIndex, context),
+                  _buildNavItem(1, Icons.people_rounded, 'Social', currentIndex, context),
+                  const SizedBox(width: 60), // Space for AI Orb
+                  _buildNavItem(2, Icons.track_changes_rounded, 'Quests', currentIndex, context),
+                  _buildNavItem(3, Icons.person_rounded, 'Profile', currentIndex, context),
+                ],
               ),
             ),
-          ),
           // Dominant Center AI Orb
           const Positioned(
             bottom: 12,

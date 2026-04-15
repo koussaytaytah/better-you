@@ -23,89 +23,85 @@ class MetricsGrid extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return GridView.count(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      crossAxisCount: 2,
-      crossAxisSpacing: 16,
-      mainAxisSpacing: 16,
-      childAspectRatio: 1.0,
-      children: [
-        _buildMetricCard(
-          context,
-          ref,
-          '${log.calories ?? 0}',
-          'Calories',
-          Icons.restaurant,
-          const Color(0xFFFFF3E0),
-          const Color(0xFFFF9800),
-          'calories',
-          false,
-          (log.calories ?? 0) / 2500.0,
-        ),
-        _buildMetricCard(
-          context,
-          ref,
-          '${log.exerciseMinutes ?? 0}m',
-          'Exercise',
-          Icons.fitness_center,
-          const Color(0xFFE8F5E9),
-          const Color(0xFF4CAF50),
-          'exerciseMinutes',
-          false,
-          (log.exerciseMinutes ?? 0) / 60.0,
-        ),
-        _buildMetricCard(
-          context,
-          ref,
-          '${log.waterGlasses ?? 0}',
-          'Water',
-          Icons.water_drop,
-          const Color(0xFFE3F2FD),
-          const Color(0xFF2196F3),
-          'waterGlasses',
-          false,
-          (log.waterGlasses ?? 0) / 8.0,
-        ),
-        _buildMetricCard(
-          context,
-          ref,
-          '${log.sleepHours?.toStringAsFixed(1) ?? "0"}h',
-          'Sleep',
-          Icons.bedtime,
-          const Color(0xFFEDE7F6),
-          const Color(0xFF673AB7),
-          'sleepHours',
-          true,
-          (log.sleepHours ?? 0) / 8.0,
-        ),
-        if (!isSimpleMode) ...[
+    return RepaintBoundary(
+      child: GridView.count(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        crossAxisCount: 2,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+        childAspectRatio: 1.1,
+        children: [
           _buildMetricCard(
             context,
             ref,
-            '${log.cigarettes ?? 0}',
-            'Cigarettes',
-            Icons.smoke_free,
-            const Color(0xFFFFEBEE),
-            const Color(0xFFE91E63),
-            'cigarettes',
+            '${log.calories ?? 0}',
+            'Calories',
+            Icons.local_fire_department_rounded,
+            const Color(0xFFFF5252),
+            'calories',
             false,
-            (log.cigarettes ?? 0) / 10.0,
+            (log.calories ?? 0) / 2500.0,
           ),
           _buildMetricCard(
             context,
             ref,
-            '${log.alcohol?.toStringAsFixed(1) ?? "0.0"}',
-            'Alcohol',
-            Icons.local_bar,
-            const Color(0xFFF3E5F5),
-            const Color(0xFF9C27B0),
-            'alcohol',
-            true,
-            (log.alcohol ?? 0) / 5.0,
+            '${log.exerciseMinutes ?? 0}m',
+            'Exercise',
+            Icons.bolt_rounded,
+            const Color(0xFF00E676),
+            'exerciseMinutes',
+            false,
+            (log.exerciseMinutes ?? 0) / 60.0,
           ),
+          _buildMetricCard(
+            context,
+            ref,
+            '${log.waterGlasses ?? 0}',
+            'Water',
+            Icons.water_drop_rounded,
+            const Color(0xFF448AFF),
+            'waterGlasses',
+            false,
+            (log.waterGlasses ?? 0) / 8.0,
+          ),
+          _buildMetricCard(
+            context,
+            ref,
+            '${log.sleepHours?.toStringAsFixed(1) ?? "0"}h',
+            'Sleep',
+            Icons.nights_stay_rounded,
+            const Color(0xFF7C4DFF),
+            'sleepHours',
+            true,
+            (log.sleepHours ?? 0) / 8.0,
+          ),
+          if (!isSimpleMode) ...[
+            _buildMetricCard(
+              context,
+              ref,
+              '${log.cigarettes ?? 0}',
+              'Cigarettes',
+              Icons.smoke_free_rounded,
+              const Color(0xFFFFAB40),
+              'cigarettes',
+              false,
+              (log.cigarettes ?? 0) / 10.0,
+            ),
+            _buildMetricCard(
+              context,
+              ref,
+              '${log.alcohol?.toStringAsFixed(1) ?? "0.0"}',
+              'Alcohol',
+              Icons.wine_bar_rounded,
+              const Color(0xFFFF4081),
+              'alcohol',
+              true,
+              (log.alcohol ?? 0) / 5.0,
+            ),
+          ],
         ],
-      ],
+      ),
     );
   }
 
@@ -115,98 +111,65 @@ class MetricsGrid extends ConsumerWidget {
     String value,
     String label,
     IconData icon,
-    Color bgColor,
-    Color iconColor,
+    Color color,
     String field,
     bool isDouble,
     double progress,
   ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return GlassCard(
       onTap: () => _showMetricUpdateDialog(context, ref, log, label, field, isDouble),
       padding: const EdgeInsets.all(16),
-      borderRadius: 30,
+      borderRadius: 24,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: bgColor,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(icon, color: iconColor, size: 18),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Icon(icon, color: color, size: 20),
+              Text(
+                '${(progress * 100).clamp(0, 100).toInt()}%',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: color,
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: iconColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    '${(progress * 100).toInt()}%',
-                    style: TextStyle(
-                      fontSize: 9,
-                      fontWeight: FontWeight.bold,
-                      color: iconColor,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
+          ),
             const Spacer(),
             FittedBox(
               fit: BoxFit.scaleDown,
               child: Text(
                 value,
-                style: GoogleFonts.poppins(
+                style: GoogleFonts.plusJakartaSans(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
-                  letterSpacing: -1,
+                  letterSpacing: -0.5,
+                  color: isDark ? Colors.white : Colors.black,
                 ),
               ),
             ),
+            const SizedBox(height: 2),
             Text(
               label,
-              style: GoogleFonts.poppins(
+              style: GoogleFonts.plusJakartaSans(
                 fontSize: 11,
-                fontWeight: FontWeight.w500,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
+                color: isDark ? Colors.white54 : Colors.black54,
               ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 8),
-            Stack(
-              children: [
-                Container(
-                  height: 4,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: bgColor,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    return AnimatedContainer(
-                      duration: const Duration(milliseconds: 800),
-                      curve: Curves.easeOutCubic,
-                      height: 4,
-                      width: constraints.maxWidth * progress.clamp(0.0, 1.0),
-                      decoration: BoxDecoration(
-                        color: iconColor,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    );
-                  },
-                ),
-              ],
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: progress.clamp(0.0, 1.0),
+                backgroundColor: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
+                valueColor: AlwaysStoppedAnimation<Color>(color),
+                minHeight: 4,
+              ),
             ),
           ],
         ),

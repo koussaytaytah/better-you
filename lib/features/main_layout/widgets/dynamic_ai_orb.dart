@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -12,121 +11,79 @@ class DynamicAIOrb extends ConsumerStatefulWidget {
   ConsumerState<DynamicAIOrb> createState() => _DynamicAIOrbState();
 }
 
-class _DynamicAIOrbState extends ConsumerState<DynamicAIOrb> with SingleTickerProviderStateMixin {
-  late AnimationController _rotationController;
+class _DynamicAIOrbState extends ConsumerState<DynamicAIOrb> {
+  bool _isPressed = false;
 
-  @override
-  void initState() {
-    super.initState();
-    _rotationController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 4),
-    )..repeat();
+  void _handleTapDown(TapDownDetails details) {
+    setState(() => _isPressed = true);
   }
 
-  @override
-  void dispose() {
-    _rotationController.dispose();
-    super.dispose();
+  void _handleTapUp(TapUpDetails details) {
+    setState(() => _isPressed = false);
+    _openChatbot();
+  }
+
+  void _handleTapCancel() {
+    setState(() => _isPressed = false);
+  }
+
+  void _openChatbot() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      barrierColor: isDark ? Colors.black.withValues(alpha: 0.8) : Colors.black.withValues(alpha: 0.5),
+      builder: (_) => Container(
+        height: MediaQuery.of(context).size.height * 0.9,
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          color: Theme.of(context).scaffoldBackgroundColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+        ),
+        child: const AIChatbotScreen(),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return GestureDetector(
-      onTap: () {
-        showModalBottomSheet(
-          context: context,
-          isScrollControlled: true,
-          backgroundColor: Colors.transparent,
-          barrierColor: isDark ? Colors.black.withValues(alpha: 0.8) : Colors.black.withValues(alpha: 0.5),
-          builder: (_) => Container(
-            height: MediaQuery.of(context).size.height * 0.9,
-            clipBehavior: Clip.antiAlias,
-            decoration: BoxDecoration(
-              color: Theme.of(context).scaffoldBackgroundColor,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+      onTapDown: _handleTapDown,
+      onTapUp: _handleTapUp,
+      onTapCancel: _handleTapCancel,
+      child: AnimatedScale(
+        scale: _isPressed ? 0.95 : 1.0,
+        duration: const Duration(milliseconds: 100),
+        curve: Curves.easeOutBack,
+        child: Container(
+          width: 64,
+          height: 64,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: AppColors.primary,
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withValues(alpha: 0.25),
+                blurRadius: 16,
+                spreadRadius: 0,
+                offset: const Offset(0, 8),
+              ),
+            ],
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.2),
+              width: 1.0,
             ),
-            child: const AIChatbotScreen(),
           ),
-        );
-      },
-      child: AnimatedBuilder(
-        animation: _rotationController,
-        builder: (context, child) {
-          return Container(
-            width: 72,
-            height: 72,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.primary.withValues(alpha: 0.4),
-                  blurRadius: 20,
-                  spreadRadius: 2,
-                ),
-                if (isDark)
-                  BoxShadow(
-                    color: Colors.blueAccent.withValues(alpha: 0.2),
-                    blurRadius: 30,
-                    spreadRadius: 5,
-                  ),
-              ],
+          child: const Center(
+            child: Icon(
+              Icons.graphic_eq_rounded,
+              color: Colors.white,
+              size: 28,
             ),
-            child: Stack(
-              children: [
-                // Rotating Sweep Gradient
-                Positioned.fill(
-                  child: Transform.rotate(
-                    angle: _rotationController.value * 2 * pi,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: SweepGradient(
-                          colors: isDark 
-                            ? [
-                                AppColors.primary,
-                                Colors.blueAccent,
-                                Colors.deepPurpleAccent,
-                                AppColors.primary,
-                              ]
-                            : [
-                                AppColors.primary,
-                                AppColors.secondary,
-                                Colors.tealAccent,
-                                AppColors.primary,
-                              ],
-                          stops: const [0.0, 0.33, 0.66, 1.0],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                // Inner Dark/Light circle for contrast
-                Positioned.fill(
-                  child: Container(
-                    margin: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: isDark ? const Color(0xFF1A1A2E) : Colors.white,
-                    ),
-                  ),
-                ),
-                // Core Icon
-                Center(
-                  child: Icon(
-                    Icons.graphic_eq_rounded,
-                    color: isDark ? Colors.white : AppColors.primary,
-                    size: 32,
-                  ),
-                ),
-              ],
-            ),
-          ).animate(onPlay: (controller) => controller.repeat(reverse: true))
-           .scale(begin: const Offset(1.0, 1.0), end: const Offset(1.05, 1.05), duration: 2.seconds)
-           .shimmer(duration: 3.seconds, color: Colors.white.withValues(alpha: 0.2));
-        },
+          ),
+        ).animate(onPlay: (controller) => controller.repeat(reverse: true))
+         .scale(begin: const Offset(1.0, 1.0), end: const Offset(1.03, 1.03), duration: 2.seconds, curve: Curves.easeInOut),
       ),
     );
   }

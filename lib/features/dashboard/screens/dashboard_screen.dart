@@ -22,7 +22,6 @@ import '../../../core/services/pedometer_service.dart';
 import '../widgets/metrics_grid.dart';
 import '../widgets/quick_actions_grid.dart';
 import '../widgets/ai_insight_card.dart';
-import '../../../shared/widgets/sticky_xp_footer.dart';
 import '../../../shared/widgets/ai_pulse_button.dart';
 import 'ai_chatbot_screen.dart';
 
@@ -109,6 +108,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     final currentUserAsync = ref.watch(currentUserAsyncProvider);
     final todayLogAsync = ref.watch(todayLogProvider);
     final isSimpleMode = ref.watch(simpleModeProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return currentUserAsync.when(
       data: (user) {
@@ -195,11 +195,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const SizedBox(height: 16),
+                      _buildHeroHeader(user, isDark, todayLogAsync.value != null),
+                      const SizedBox(height: 32),
                       _buildRecentMessages(),
                       const SizedBox(height: 24),
                       _buildConnectedFriends(user),
-                      const SizedBox(height: 32),
-                      _buildHeader(user),
                       const SizedBox(height: 32),
                       Text(
                         'Quick Actions',
@@ -223,9 +223,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                       const AIInsightCard(),
                       const SizedBox(height: 32),
                       _buildDailyProgressCard(),
-                      const SizedBox(height: 32),
-                      StickyXPFooter(user: user),
-                      const SizedBox(height: 40),
+                      const SizedBox(height: 80), // Padding for the floating navbar
                     ],
                   ),
                 ),
@@ -451,57 +449,206 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     );
   }
 
-  Widget _buildHeader(UserModel user) {
-    return Row(
-      children: [
-        Expanded(
-          child: Column(
+  Widget _buildHeroHeader(UserModel user, bool isDark, bool hasLoggedToday) {
+    final double progress = (user.xp % 1000) / 1000;
+    
+    // Status Logic: Green if logged, Orange if early, Red if late and not logged
+    final bool isLateInDay = DateTime.now().hour > 17;
+    Color statusColor;
+    String statusText;
+    
+    if (hasLoggedToday) {
+      statusColor = AppColors.primary;
+      statusText = 'ON TRACK';
+    } else if (isLateInDay) {
+      statusColor = AppColors.danger;
+      statusText = 'BEHIND';
+    } else {
+      statusColor = AppColors.warning;
+      statusText = 'LOG MEALS';
+    }
+    
+    // Mocking streak for UI layout, normally fetched from a StreakProvider
+    final int streakCount = (user.level * 2) + 1; 
+    
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1A1A1A) : Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.05),
+          width: 1,
+        ),
+        boxShadow: isDark ? [] : [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          )
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Welcome back,',
-                style: GoogleFonts.poppins(
-                  fontSize: 16,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w500,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          'Welcome back,',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: isDark ? Colors.grey[500] : Colors.grey[600],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.accent.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: AppColors.accent.withValues(alpha: 0.3)),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.local_fire_department_rounded, color: AppColors.accent, size: 14),
+                              const SizedBox(width: 4),
+                              Text(
+                                '$streakCount',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                  color: AppColors.accent,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      user.name.split(' ').first,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 32,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -1.2,
+                        color: isDark ? Colors.white : Colors.black,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              Text(
-                '${user.name.split(' ').first}!',
-                style: GoogleFonts.poppins(
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: -1,
-                  color: Theme.of(context).colorScheme.onSurface,
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: AppColors.primary.withValues(alpha: 0.3),
+                    width: 1,
+                  )
+                ),
+                child: Column(
+                  children: [
+                    const Icon(Icons.star_rounded, color: AppColors.primary, size: 24),
+                    const SizedBox(height: 4),
+                    Text(
+                      'LVL ${user.level}',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.primary,
+                        fontSize: 14,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
-        ),
-        Container(
-          padding: const EdgeInsets.all(4),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: AppColors.primary.withValues(alpha: 0.2),
-              width: 2,
-            ),
-          ),
-          child: CircleAvatar(
-            radius: 28,
-            backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-            child: Text(
-              user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
-              style: GoogleFonts.poppins(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: AppColors.primary,
+          const SizedBox(height: 32),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  TweenAnimationBuilder<double>(
+                    tween: Tween<double>(begin: 0, end: user.xp.toDouble()),
+                    duration: const Duration(seconds: 1),
+                    curve: Curves.easeOutExpo,
+                    builder: (context, value, child) {
+                      return Text(
+                        '${value.toInt()}',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 24,
+                          letterSpacing: -0.5,
+                          color: isDark ? Colors.white : Colors.black,
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'XP',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ],
               ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  statusText,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 10,
+                    letterSpacing: 0.5,
+                    color: statusColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: TweenAnimationBuilder<double>(
+              tween: Tween<double>(begin: 0, end: progress),
+              duration: const Duration(milliseconds: 1200),
+              curve: Curves.easeOutExpo,
+              builder: (context, val, child) {
+                return LinearProgressIndicator(
+                  value: val,
+                  backgroundColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey[200],
+                  valueColor: AlwaysStoppedAnimation<Color>(statusColor),
+                  minHeight: 12,
+                );
+              },
             ),
           ),
-        ),
-      ],
-    ).animate().fadeIn(duration: 600.ms).slideY(begin: -0.2);
+        ],
+      ),
+    ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.05);
   }
 
   Widget _buildNoDailyLogBanner() {

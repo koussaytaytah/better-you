@@ -48,6 +48,7 @@ class LeaderboardScreen extends ConsumerWidget {
                   Expanded(
                     child: ListView.builder(
                       padding: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 100),
+                      itemExtent: 84,
                       itemCount: otherUsers.length,
                       itemBuilder: (context, index) {
                         final user = otherUsers[index];
@@ -113,6 +114,7 @@ class LeaderboardScreen extends ConsumerWidget {
   Widget _buildPodiumPlace(BuildContext context, UserModel user, int rank) {
     final double height = rank == 1 ? 160 : (rank == 2 ? 130 : 110);
     final Color color = rank == 1 ? const Color(0xFFFFD700) : (rank == 2 ? const Color(0xFFC0C0C0) : const Color(0xFFCD7F32));
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -157,20 +159,18 @@ class LeaderboardScreen extends ConsumerWidget {
           width: 70,
           height: height - 60,
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [color, color.withValues(alpha: 0.6)],
+            color: isDark ? const Color(0xFF1A1A1A) : Colors.white,
+            border: Border(
+                top: BorderSide(color: color, width: 4),
+                left: BorderSide(color: color.withValues(alpha: 0.2), width: 1),
+                right: BorderSide(color: color.withValues(alpha: 0.2), width: 1),
             ),
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-            boxShadow: [
-              BoxShadow(color: color.withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 4)),
-            ],
+            borderRadius: BorderRadius.zero,
           ),
           child: Center(
-            child: Icon(Icons.workspace_premium, color: Colors.white.withValues(alpha: 0.5), size: 30),
+            child: Icon(Icons.workspace_premium, color: color, size: 24),
           ),
-        ).animate().slideY(begin: 1.0, duration: 800.ms, curve: Curves.easeOut),
+        ).animate().slideY(begin: 1.0, duration: 600.ms, curve: Curves.easeOutExpo),
       ],
     );
   }

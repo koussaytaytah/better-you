@@ -105,62 +105,62 @@ class QuickActionsGrid extends StatelessWidget {
       },
     ];
 
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 16,
-        mainAxisSpacing: 16,
-        childAspectRatio: 2.2, // Made it slightly wider
-      ),
+    return RepaintBoundary(
+      child: GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+          childAspectRatio: 2.2,
+        ),
       itemCount: actions.length,
       itemBuilder: (context, index) {
         final action = actions[index];
         final color = action['color'] as Color;
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+
         return GlassCard(
-          borderRadius: 20,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
+          borderRadius: 16,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
           onTap: () {
             final screenWidget = action['screen'] as Widget?;
             if (screenWidget != null) {
-               Navigator.push(
-                context,
+               Navigator.of(context, rootNavigator: true).push(
                 MaterialPageRoute(builder: (_) => screenWidget),
               );
             }
           },
           child: Row(
             children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    action['icon'] as IconData,
-                    color: color,
-                    size: 20,
-                  ),
+                Icon(
+                  action['icon'] as IconData,
+                  color: color,
+                  size: 22,
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     action['title'] as String,
-                    style: GoogleFonts.poppins(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Theme.of(context).colorScheme.onSurface,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: -0.2,
+                      color: isDark ? Colors.white : Colors.black,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
-              ],
-            ),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  size: 16,
+                  color: isDark ? Colors.white24 : Colors.black12,
+                ),
+            ],
+          ),
         );
       },
-    );
+    ),
+  );
   }
 }
