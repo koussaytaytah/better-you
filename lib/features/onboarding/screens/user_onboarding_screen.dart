@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/constants/app_theme.dart';
 import '../../../shared/providers/auth_provider.dart';
 import '../../../shared/widgets/custom_button.dart';
@@ -16,179 +17,230 @@ class UserOnboardingScreen extends ConsumerStatefulWidget {
 }
 
 class _UserOnboardingScreenState extends ConsumerState<UserOnboardingScreen> {
-  final _formKey = GlobalKey<FormState>();
-  int _currentStep = 0;
+  final PageController _pageController = PageController();
+  int _currentPage = 0;
+  bool _isSaving = false;
 
-  // Personal Info
+  // Page 1 – Personal Info
   final _ageController = TextEditingController();
   final _heightController = TextEditingController();
   final _weightController = TextEditingController();
-  final _targetWeightController = TextEditingController();
   String? _gender;
 
-  // Alcohol Habit
+  // Page 2 – Lifestyle Habits
   bool _drinksAlcohol = false;
-  final _alcoholStartYearController = TextEditingController();
-  final _weeklyBeersController = TextEditingController();
-
-  // Smoking Habit
   bool _smokes = false;
-  final _smokingStartYearController = TextEditingController();
+  final _weeklyBeersController = TextEditingController();
   final _dailyCigarettesController = TextEditingController();
 
-  // Physical Activity
+  // Page 3 – Physical Activity
   final Map<String, bool> _activities = {
     'Gym': false,
     'Running': false,
     'Boxing': false,
     'Cardio': false,
+    'Yoga': false,
     'Other': false,
   };
   final _weeklySessionsController = TextEditingController();
 
-  // Diet Preferences
+  // Page 4 – Diet Preferences
+  String _dietType = 'Balanced';
   final Map<String, bool> _dislikedFoods = {
     'Fish': false,
     'Eggs': false,
     'Milk': false,
     'Meat': false,
     'Vegetables': false,
+    'Gluten': false,
   };
 
-  // Goal
+  // Page 5 – Goals
   String? _goal;
+  final _targetWeightController = TextEditingController();
 
-  final List<String> _steps = [
-    'Personal Information',
-    'Alcohol Habits',
-    'Smoking Habits',
-    'Physical Activity',
-    'Diet Preferences',
-    'Goals',
+  static const int _totalPages = 5;
+
+  static const _pageData = [
+    {'emoji': '👤', 'title': 'About You', 'subtitle': 'Tell us your basics so we can personalize everything'},
+    {'emoji': '🍷', 'title': 'Lifestyle', 'subtitle': 'Understanding your habits helps us build smarter plans'},
+    {'emoji': '🏋️', 'title': 'Activity Level', 'subtitle': 'What does your fitness routine look like?'},
+    {'emoji': '🥗', 'title': 'Food Preferences', 'subtitle': 'We\'ll tailor your meal plans around what you enjoy'},
+    {'emoji': '🎯', 'title': 'Your Goal', 'subtitle': 'Set your target so we can track your progress'},
   ];
 
   @override
   void dispose() {
+    _pageController.dispose();
     _ageController.dispose();
     _heightController.dispose();
     _weightController.dispose();
     _targetWeightController.dispose();
-    _alcoholStartYearController.dispose();
     _weeklyBeersController.dispose();
-    _smokingStartYearController.dispose();
     _dailyCigarettesController.dispose();
     _weeklySessionsController.dispose();
     super.dispose();
   }
 
-  Future<void> _completeOnboarding() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    final currentUser = ref.read(currentUserProvider);
-    if (currentUser == null) return;
-
-    final habits = {
-      'alcohol': {
-        'drinks': _drinksAlcohol,
-        'startYear': int.tryParse(_alcoholStartYearController.text),
-        'weeklyBeers': double.tryParse(_weeklyBeersController.text),
-      },
-      'smoking': {
-        'smokes': _smokes,
-        'startYear': int.tryParse(_smokingStartYearController.text),
-        'dailyCigarettes': int.tryParse(_dailyCigarettesController.text),
-      },
-      'activities': _activities,
-      'weeklySessions': int.tryParse(_weeklySessionsController.text),
-      'dislikedFoods': _dislikedFoods,
-      'goal': _goal,
-    };
-
-    final updatedUser = currentUser.copyWith(
-      age: int.tryParse(_ageController.text),
-      height: double.tryParse(_heightController.text),
-      weight: double.tryParse(_weightController.text),
-      targetWeight: double.tryParse(_targetWeightController.text),
-      habits: habits,
-      hasCompletedOnboarding: true,
-    );
-
-    await ref.read(currentUserAsyncProvider.notifier).updateUser(updatedUser);
-
-    if (mounted) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const DashboardScreen()),
-      );
-    }
-  }
-
-  void _nextStep() {
-    if (_currentStep < _steps.length - 1) {
-      setState(() => _currentStep++);
+  void _nextPage() {
+    if (_currentPage < _totalPages - 1) {
+      _pageController.nextPage(duration: const Duration(milliseconds: 350), curve: Curves.easeInOut);
     } else {
       _completeOnboarding();
     }
   }
 
-  void _previousStep() {
-    if (_currentStep > 0) {
-      setState(() => _currentStep--);
+  void _prevPage() {
+    if (_currentPage > 0) {
+      _pageController.previousPage(duration: const Duration(milliseconds: 350), curve: Curves.easeInOut);
+    }
+  }
+
+  Future<void> _completeOnboarding() async {
+    setState(() => _isSaving = true);
+    try {
+      final currentUser = ref.read(currentUserProvider);
+      if (currentUser == null) return;
+
+      final habits = {
+        'alcohol': {'drinks': _drinksAlcohol, 'weeklyBeers': double.tryParse(_weeklyBeersController.text)},
+        'smoking': {'smokes': _smokes, 'dailyCigarettes': int.tryParse(_dailyCigarettesController.text)},
+        'activities': Map<String, bool>.from(_activities),
+        'weeklySessions': int.tryParse(_weeklySessionsController.text),
+        'dietType': _dietType,
+        'dislikedFoods': Map<String, bool>.from(_dislikedFoods),
+        'goal': _goal,
+      };
+
+      final updatedUser = currentUser.copyWith(
+        age: int.tryParse(_ageController.text),
+        height: double.tryParse(_heightController.text),
+        weight: double.tryParse(_weightController.text),
+        targetWeight: double.tryParse(_targetWeightController.text),
+        habits: habits,
+        hasCompletedOnboarding: true,
+      );
+
+      await ref.read(currentUserAsyncProvider.notifier).updateUser(updatedUser);
+
+      // Persist onboarding completion to SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('onboarding_completed_${currentUser.uid}', true);
+
+      if (mounted) {
+        Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const DashboardScreen()));
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final pageInfo = _pageData[_currentPage];
+
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        title: Text(
-          'Setup Your Profile',
-          style: GoogleFonts.poppins(
-            color: AppColors.text,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        leading: _currentStep > 0
-            ? IconButton(
-                icon: Icon(Icons.arrow_back, color: AppColors.text),
-                onPressed: _previousStep,
-              )
-            : null,
-      ),
       body: SafeArea(
         child: Column(
           children: [
-            LinearProgressIndicator(
-              value: (_currentStep + 1) / _steps.length,
-              backgroundColor: Colors.grey.shade200,
-              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
-            ),
+            // ── Top bar ──────────────────────────────────────────────
             Padding(
-              padding: const EdgeInsets.all(16),
-              child: Text(
-                _steps[_currentStep],
-                style: GoogleFonts.poppins(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.text,
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: Row(
+                children: [
+                  if (_currentPage > 0)
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+                      onPressed: _prevPage,
+                    )
+                  else
+                    const SizedBox(width: 48),
+                  Expanded(
+                    child: Column(
+                      children: [
+                        Text('${_currentPage + 1} of $_totalPages',
+                            style: TextStyle(color: Colors.grey[500], fontSize: 12)),
+                        const SizedBox(height: 6),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: LinearProgressIndicator(
+                            value: (_currentPage + 1) / _totalPages,
+                            minHeight: 6,
+                            backgroundColor: Colors.grey.shade200,
+                            valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 48),
+                ],
+              ),
+            ),
+
+            // ── Page header ──────────────────────────────────────────
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              child: Padding(
+                key: ValueKey(_currentPage),
+                padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
+                child: Column(
+                  children: [
+                    Text(pageInfo['emoji']!, style: const TextStyle(fontSize: 48)),
+                    const SizedBox(height: 12),
+                    Text(pageInfo['title']!,
+                        style: GoogleFonts.poppins(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.text)),
+                    const SizedBox(height: 6),
+                    Text(pageInfo['subtitle']!,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.grey[500], fontSize: 14, height: 1.4)),
+                  ],
                 ),
               ),
             ),
+
+            // ── Pages ────────────────────────────────────────────────
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
-                child: Form(key: _formKey, child: _buildCurrentStep()),
+              child: PageView(
+                controller: _pageController,
+                physics: const NeverScrollableScrollPhysics(),
+                onPageChanged: (i) => setState(() => _currentPage = i),
+                children: [
+                  _buildPage1(),
+                  _buildPage2(),
+                  _buildPage3(),
+                  _buildPage4(),
+                  _buildPage5(),
+                ],
               ),
             ),
+
+            // ── Bottom button ─────────────────────────────────────────
             Padding(
-              padding: const EdgeInsets.all(24),
-              child: CustomButton(
-                text: _currentStep == _steps.length - 1
-                    ? 'Complete Setup'
-                    : 'Next',
-                onPressed: _nextStep,
+              padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+              child: Column(
+                children: [
+                  // Dot indicators
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(_totalPages, (i) => AnimatedContainer(
+                      duration: const Duration(milliseconds: 250),
+                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                      width: i == _currentPage ? 22 : 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: i == _currentPage ? AppColors.primary : Colors.grey[300],
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    )),
+                  ),
+                  const SizedBox(height: 16),
+                  CustomButton(
+                    text: _currentPage == _totalPages - 1 ? 'Complete Setup ✓' : 'Continue',
+                    onPressed: _isSaving ? null : _nextPage,
+                  ),
+                ],
               ),
             ),
           ],
@@ -197,292 +249,284 @@ class _UserOnboardingScreenState extends ConsumerState<UserOnboardingScreen> {
     );
   }
 
-  Widget _buildCurrentStep() {
-    switch (_currentStep) {
-      case 0:
-        return _buildPersonalInfoStep();
-      case 1:
-        return _buildAlcoholHabitStep();
-      case 2:
-        return _buildSmokingHabitStep();
-      case 3:
-        return _buildPhysicalActivityStep();
-      case 4:
-        return _buildDietPreferencesStep();
-      case 5:
-        return _buildGoalStep();
-      default:
-        return Container();
-    }
-  }
-
-  Widget _buildPersonalInfoStep() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Tell us about yourself',
-          style: GoogleFonts.poppins(
-            fontSize: 16,
-            color: AppColors.text.withValues(alpha: 0.7),
+  // ── Page 1: Personal Info ─────────────────────────────────────────────────
+  Widget _buildPage1() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 8),
+          _SectionLabel('Gender'),
+          const SizedBox(height: 8),
+          Row(
+            children: ['Male', 'Female', 'Other'].map((g) {
+              final isSelected = _gender == g;
+              return Expanded(
+                child: GestureDetector(
+                  onTap: () => setState(() => _gender = g),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    margin: const EdgeInsets.only(right: 8),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    decoration: BoxDecoration(
+                      color: isSelected ? AppColors.primary : Colors.grey[50],
+                      border: Border.all(color: isSelected ? AppColors.primary : Colors.grey.withValues(alpha: 0.3)),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Text(g, textAlign: TextAlign.center,
+                        style: TextStyle(color: isSelected ? Colors.white : Colors.grey[700], fontWeight: FontWeight.w600)),
+                  ),
+                ),
+              );
+            }).toList(),
           ),
-        ),
-        const SizedBox(height: 24),
-        DropdownButtonFormField<String>(
-          initialValue: _gender,
-          decoration: const InputDecoration(
-            labelText: 'Gender',
-            border: OutlineInputBorder(),
-          ),
-          items: ['Male', 'Female', 'Other'].map((gender) {
-            return DropdownMenuItem(value: gender, child: Text(gender));
-          }).toList(),
-          onChanged: (value) => setState(() => _gender = value),
-          validator: (value) =>
-              value == null ? 'Please select your gender' : null,
-        ),
-        const SizedBox(height: 16),
-        CustomTextField(
-          controller: _ageController,
-          label: 'Age',
-          keyboardType: TextInputType.number,
-          validator: (value) {
-            if (value?.isEmpty ?? true) return 'Please enter your age';
-            final age = int.tryParse(value!);
-            if (age == null || age < 13 || age > 120) {
-              return 'Please enter a valid age';
-            }
-            return null;
-          },
-        ),
-        const SizedBox(height: 16),
-        CustomTextField(
-          controller: _heightController,
-          label: 'Height (cm)',
-          keyboardType: TextInputType.number,
-          validator: (value) {
-            if (value?.isEmpty ?? true) return 'Please enter your height';
-            final height = double.tryParse(value!);
-            if (height == null || height < 50 || height > 250) {
-              return 'Please enter a valid height in cm';
-            }
-            return null;
-          },
-        ),
-        const SizedBox(height: 16),
-        CustomTextField(
-          controller: _weightController,
-          label: 'Current Weight (kg)',
-          keyboardType: TextInputType.number,
-          validator: (value) {
-            if (value?.isEmpty ?? true) return 'Please enter your weight';
-            final weight = double.tryParse(value!);
-            if (weight == null || weight < 20 || weight > 300) {
-              return 'Please enter a valid weight in kg';
-            }
-            return null;
-          },
-        ),
-      ],
-    );
-  }
-
-  Widget _buildAlcoholHabitStep() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Do you drink alcohol?',
-          style: GoogleFonts.poppins(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: AppColors.text,
-          ),
-        ),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: RadioListTile<bool>(
-                title: const Text('Yes'),
-                value: true,
-                // ignore: deprecated_member_use
-                groupValue: _drinksAlcohol,
-                // ignore: deprecated_member_use
-                onChanged: (value) => setState(() => _drinksAlcohol = value!),
-              ),
-            ),
-            Expanded(
-              child: RadioListTile<bool>(
-                title: const Text('No'),
-                value: false,
-                // ignore: deprecated_member_use
-                groupValue: _drinksAlcohol,
-                // ignore: deprecated_member_use
-                onChanged: (value) => setState(() => _drinksAlcohol = value!),
-              ),
-            ),
-          ],
-        ),
-        if (_drinksAlcohol) ...[
-          const SizedBox(height: 24),
-          CustomTextField(
-            controller: _alcoholStartYearController,
-            label: 'When did you start drinking? (Year)',
-            keyboardType: TextInputType.number,
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(child: CustomTextField(controller: _ageController, label: 'Age', keyboardType: TextInputType.number)),
+              const SizedBox(width: 12),
+              Expanded(child: CustomTextField(controller: _heightController, label: 'Height (cm)', keyboardType: TextInputType.number)),
+            ],
           ),
           const SizedBox(height: 16),
-          CustomTextField(
-            controller: _weeklyBeersController,
-            label: 'Average beers per week',
-            keyboardType: TextInputType.number,
-          ),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildSmokingHabitStep() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Do you smoke?',
-          style: GoogleFonts.poppins(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: AppColors.text,
-          ),
-        ),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: RadioListTile<bool>(
-                title: const Text('Yes'),
-                value: true,
-                // ignore: deprecated_member_use
-                groupValue: _smokes,
-                // ignore: deprecated_member_use
-                onChanged: (value) => setState(() => _smokes = value!),
-              ),
-            ),
-            Expanded(
-              child: RadioListTile<bool>(
-                title: const Text('No'),
-                value: false,
-                // ignore: deprecated_member_use
-                groupValue: _smokes,
-                // ignore: deprecated_member_use
-                onChanged: (value) => setState(() => _smokes = value!),
-              ),
-            ),
-          ],
-        ),
-        if (_smokes) ...[
+          CustomTextField(controller: _weightController, label: 'Current Weight (kg)', keyboardType: TextInputType.number),
           const SizedBox(height: 24),
-          CustomTextField(
-            controller: _smokingStartYearController,
-            label: 'When did you start smoking? (Year)',
-            keyboardType: TextInputType.number,
-          ),
-          const SizedBox(height: 16),
-          CustomTextField(
-            controller: _dailyCigarettesController,
-            label: 'Cigarettes per day',
-            keyboardType: TextInputType.number,
-          ),
         ],
-      ],
+      ),
     );
   }
 
-  Widget _buildPhysicalActivityStep() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'What physical activities do you practice?',
-          style: GoogleFonts.poppins(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: AppColors.text,
+  // ── Page 2: Lifestyle ─────────────────────────────────────────────────────
+  Widget _buildPage2() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 8),
+          _ToggleCard(
+            icon: '🍺',
+            title: 'Do you drink alcohol?',
+            value: _drinksAlcohol,
+            onChanged: (v) => setState(() => _drinksAlcohol = v),
           ),
-        ),
-        const SizedBox(height: 16),
-        ..._activities.keys.map(
-          (activity) => CheckboxListTile(
-            title: Text(activity),
-            value: _activities[activity],
-            onChanged: (value) =>
-                setState(() => _activities[activity] = value ?? false),
+          if (_drinksAlcohol) ...[
+            const SizedBox(height: 12),
+            CustomTextField(controller: _weeklyBeersController, label: 'Drinks per week (avg)', keyboardType: TextInputType.number),
+          ],
+          const SizedBox(height: 16),
+          _ToggleCard(
+            icon: '🚬',
+            title: 'Do you smoke?',
+            value: _smokes,
+            onChanged: (v) => setState(() => _smokes = v),
           ),
-        ),
-        const SizedBox(height: 24),
-        CustomTextField(
-          controller: _weeklySessionsController,
-          label: 'How many times per week?',
-          keyboardType: TextInputType.number,
-        ),
-      ],
+          if (_smokes) ...[
+            const SizedBox(height: 12),
+            CustomTextField(controller: _dailyCigarettesController, label: 'Cigarettes per day', keyboardType: TextInputType.number),
+          ],
+          const SizedBox(height: 24),
+        ],
+      ),
     );
   }
 
-  Widget _buildDietPreferencesStep() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Which foods do you dislike?',
-          style: GoogleFonts.poppins(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: AppColors.text,
+  // ── Page 3: Physical Activity ─────────────────────────────────────────────
+  Widget _buildPage3() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 8),
+          _SectionLabel('Select all that apply'),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: _activities.keys.map((a) {
+              final isSelected = _activities[a]!;
+              return GestureDetector(
+                onTap: () => setState(() => _activities[a] = !isSelected),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: isSelected ? AppColors.primary : Colors.grey[50],
+                    border: Border.all(color: isSelected ? AppColors.primary : Colors.grey.withValues(alpha: 0.3)),
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                  child: Text(a, style: TextStyle(color: isSelected ? Colors.white : Colors.grey[700], fontWeight: FontWeight.w500)),
+                ),
+              );
+            }).toList(),
           ),
-        ),
-        const SizedBox(height: 16),
-        ..._dislikedFoods.keys.map(
-          (food) => CheckboxListTile(
-            title: Text(food),
-            value: _dislikedFoods[food],
-            onChanged: (value) =>
-                setState(() => _dislikedFoods[food] = value ?? false),
-          ),
-        ),
-      ],
+          const SizedBox(height: 24),
+          _SectionLabel('Sessions per week'),
+          const SizedBox(height: 12),
+          CustomTextField(controller: _weeklySessionsController, label: 'e.g. 3', keyboardType: TextInputType.number),
+          const SizedBox(height: 24),
+        ],
+      ),
     );
   }
 
-  Widget _buildGoalStep() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'What is your main goal?',
-          style: GoogleFonts.poppins(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: AppColors.text,
+  // ── Page 4: Diet Preferences ──────────────────────────────────────────────
+  Widget _buildPage4() {
+    final dietTypes = ['Balanced', 'Vegan', 'Vegetarian', 'Keto', 'Paleo', 'High-Protein'];
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 8),
+          _SectionLabel('Diet type'),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: dietTypes.map((d) {
+              final isSelected = _dietType == d;
+              return GestureDetector(
+                onTap: () => setState(() => _dietType = d),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: isSelected ? AppColors.primary : Colors.grey[50],
+                    border: Border.all(color: isSelected ? AppColors.primary : Colors.grey.withValues(alpha: 0.3)),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(d, style: TextStyle(color: isSelected ? Colors.white : Colors.grey[700], fontWeight: FontWeight.w500)),
+                ),
+              );
+            }).toList(),
           ),
-        ),
-        const SizedBox(height: 16),
-        ...['Lose weight', 'Gain weight', 'Maintain weight'].map(
-          (goal) => RadioListTile<String>(
-            title: Text(goal),
-            value: goal,
-            // ignore: deprecated_member_use
-            groupValue: _goal,
-            // ignore: deprecated_member_use
-            onChanged: (value) => setState(() => _goal = value),
+          const SizedBox(height: 24),
+          _SectionLabel('Foods you dislike'),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: _dislikedFoods.keys.map((f) {
+              final isSelected = _dislikedFoods[f]!;
+              return GestureDetector(
+                onTap: () => setState(() => _dislikedFoods[f] = !isSelected),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: isSelected ? Colors.red.withValues(alpha: 0.1) : Colors.grey[50],
+                    border: Border.all(color: isSelected ? Colors.red.withValues(alpha: 0.5) : Colors.grey.withValues(alpha: 0.3)),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(f, style: TextStyle(color: isSelected ? Colors.red[700] : Colors.grey[700], fontWeight: FontWeight.w500)),
+                ),
+              );
+            }).toList(),
           ),
-        ),
-        const SizedBox(height: 24),
-        CustomTextField(
-          controller: _targetWeightController,
-          label: 'Target Weight (kg)',
-          keyboardType: TextInputType.number,
-        ),
-      ],
+          const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+
+  // ── Page 5: Goals ─────────────────────────────────────────────────────────
+  Widget _buildPage5() {
+    final goals = [
+      {'value': 'Lose weight', 'emoji': '⬇️', 'desc': 'Burn fat & slim down'},
+      {'value': 'Gain muscle', 'emoji': '💪', 'desc': 'Build strength & size'},
+      {'value': 'Maintain weight', 'emoji': '⚖️', 'desc': 'Stay fit & balanced'},
+      {'value': 'Improve endurance', 'emoji': '🏃', 'desc': 'Run faster, go longer'},
+      {'value': 'Improve flexibility', 'emoji': '🧘', 'desc': 'Stretch & mobility'},
+    ];
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 8),
+          ...goals.map((g) {
+            final isSelected = _goal == g['value'];
+            return GestureDetector(
+              onTap: () => setState(() => _goal = g['value']),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: isSelected ? AppColors.primary.withValues(alpha: 0.08) : Colors.white,
+                  border: Border.all(color: isSelected ? AppColors.primary : Colors.grey.withValues(alpha: 0.2), width: isSelected ? 2 : 1),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Row(
+                  children: [
+                    Text(g['emoji']!, style: const TextStyle(fontSize: 28)),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(g['value']!, style: TextStyle(fontWeight: FontWeight.bold, color: isSelected ? AppColors.primary : AppColors.text)),
+                          Text(g['desc']!, style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                        ],
+                      ),
+                    ),
+                    if (isSelected) const Icon(Icons.check_circle_rounded, color: AppColors.primary),
+                  ],
+                ),
+              ),
+            );
+          }),
+          const SizedBox(height: 16),
+          CustomTextField(controller: _targetWeightController, label: 'Target Weight (kg)', keyboardType: TextInputType.number),
+          const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Helper widgets ─────────────────────────────────────────────────────────────
+
+class _SectionLabel extends StatelessWidget {
+  final String label;
+  const _SectionLabel(this.label);
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(label,
+        style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 14, color: AppColors.text.withValues(alpha: 0.7)));
+  }
+}
+
+class _ToggleCard extends StatelessWidget {
+  final String icon;
+  final String title;
+  final bool value;
+  final void Function(bool) onChanged;
+
+  const _ToggleCard({required this.icon, required this.title, required this.value, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: value ? AppColors.primary.withValues(alpha: 0.06) : Colors.grey[50],
+        border: Border.all(color: value ? AppColors.primary.withValues(alpha: 0.4) : Colors.grey.withValues(alpha: 0.2)),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          Text(icon, style: const TextStyle(fontSize: 24)),
+          const SizedBox(width: 14),
+          Expanded(child: Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15))),
+          Switch(value: value, onChanged: onChanged, activeThumbColor: AppColors.primary),
+        ],
+      ),
     );
   }
 }

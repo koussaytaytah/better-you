@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -65,11 +64,12 @@ class _DailyMetricsScreenState extends ConsumerState<DailyMetricsScreen> {
 
   Future<void> _processAudio(String path) async {
     setState(() => _isProcessing = true);
+    final messenger = ScaffoldMessenger.of(context);
     try {
       final text = await ref.read(aiServiceProvider).transcribeAudio(path);
       if (text != null && text.isNotEmpty) {
         _textController.text = text;
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           SnackBar(content: Text('Transcribed: "$text"')),
         );
       }

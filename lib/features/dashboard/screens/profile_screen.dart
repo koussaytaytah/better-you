@@ -3,15 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 import '../../../core/constants/app_theme.dart';
 import '../../../shared/models/user_model.dart';
 import '../../../shared/providers/auth_provider.dart';
 import '../../../shared/providers/data_provider.dart';
 import '../../../shared/providers/language_provider.dart';
-import '../../../shared/models/challenge_model.dart';
-import '../../../shared/models/daily_log_model.dart';
-import '../../../shared/widgets/responsive_wrapper.dart';
 import 'bmi_calculator_screen.dart';
 import 'screen_time_management_screen.dart';
 import 'progress_calendar_screen.dart';
@@ -19,6 +16,7 @@ import '../../statistics/screens/statistics_screen.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:io';
+import '../../../core/services/cloudinary_service.dart';
 import '../../../shared/widgets/glass_card.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
@@ -113,11 +111,24 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     
     try {
       final file = File(pickedFile.path);
-      final refPath = FirebaseStorage.instance.ref().child('profiles/${user.uid}.jpg');
-      
-      final uploadTask = refPath.putFile(file);
-      final snapshot = await uploadTask;
-      final downloadUrl = await snapshot.ref.getDownloadURL();
+      String? downloadUrl;
+
+      // Try Cloudinary first (free 25 GB tier).
+      final cloud = CloudinaryService();
+      if (cloud.isConfigured) {
+        downloadUrl = await cloud.uploadImage(
+          file.path,
+          folder: 'profiles/${user.uid}',
+        );
+      }
+
+      // Fallback to Firebase Storage if Cloudinary is unavailable.
+      if (downloadUrl == null) {
+        final refPath = FirebaseStorage.instance.ref().child('profiles/${user.uid}.jpg');
+        final uploadTask = refPath.putFile(file);
+        final snapshot = await uploadTask;
+        downloadUrl = await snapshot.ref.getDownloadURL();
+      }
 
       await ref.read(userRepositoryProvider).updateUserProfile(user.uid, {
         'profileImageUrl': downloadUrl,
@@ -144,210 +155,302 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(currentUserProvider);
+    if (user == null) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+
+    final logsAsync = ref.watch(dailyLogsProvider(user.uid));
+    final nextLevelXp = user.level * 1000;
+    final xpProgress = (user.xp / nextLevelXp).clamp(0.0, 1.0);
+    final rank = user.getRankName();
 
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        elevation: 0,
-        centerTitle: true,
-        title: Text(
-          'My Profile',
-          style: GoogleFonts.poppins(
-            fontWeight: FontWeight.bold,
-            color: Theme.of(context).brightness == Brightness.light
-                ? Colors.black87
-                : Colors.white,
-          ),
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(
-              Icons.settings_outlined,
-              color: Theme.of(context).brightness == Brightness.light
-                  ? Colors.black87
-                  : Colors.white,
-            ),
-            onPressed: () => Navigator.of(
-              context,
-            ).push(MaterialPageRoute(builder: (_) => const SettingsScreen())),
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),
-      body: Container(
-        decoration: BoxDecoration(
-          color: Theme.of(context).scaffoldBackgroundColor,
-        ),
-        child: ResponsiveWrapper(
-          maxWidth: 800,
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 16),
-                _buildProfileHeader(user),
-                const SizedBox(height: 24),
-                _buildGamificationSection(user),
-                const SizedBox(height: 32),
-                _buildSectionTitle('Health Tools'),
-                const SizedBox(height: 16),
-                _buildToolsSection(),
-                const SizedBox(height: 32),
-                _buildSectionTitle('Personal Settings'),
-                const SizedBox(height: 16),
-                _buildInfoCard([
-                  _buildTextField(
-                    'Full Name',
-                    _nameController,
-                    Icons.person_outline,
+      backgroundColor: AppColors.background,
+      body: CustomScrollView(
+        slivers: [
+          // ── Hero App Bar ──────────────────────────────────────────────────
+          SliverAppBar(
+            expandedHeight: 280,
+            pinned: true,
+            backgroundColor: AppColors.primary,
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.settings_outlined, color: Colors.white),
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SettingsScreen())),
+              ),
+              const SizedBox(width: 4),
+            ],
+            flexibleSpace: FlexibleSpaceBar(
+              background: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [_getRankColor(rank), _getRankColor(rank).withValues(alpha: 0.6)],
+                    begin: Alignment.topLeft, end: Alignment.bottomRight,
                   ),
-                  _buildTextField(
-                    'Target Weight (kg)',
-                    _targetWeightController,
-                    Icons.track_changes,
-                    isNumber: true,
-                  ),
-                ]),
-                const SizedBox(height: 32),
-                _buildSectionTitle('Health Goal'),
-                const SizedBox(height: 16),
-                _buildGoalSelector(),
-                const SizedBox(height: 48),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _isSaving ? null : _saveProfile,
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                    child: _isSaving
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
+                ),
+                child: SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        // Avatar + name
+                        Row(
+                          children: [
+                            GestureDetector(
+                              onTap: _isUploadingPhoto ? null : _uploadProfilePhoto,
+                              child: Stack(
+                                children: [
+                                  Container(
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      border: Border.all(color: Colors.white, width: 3),
+                                    ),
+                                    child: CircleAvatar(
+                                      radius: 38,
+                                      backgroundColor: Colors.white24,
+                                      backgroundImage: user.profileImageUrl != null ? NetworkImage(user.profileImageUrl!) : null,
+                                      child: user.profileImageUrl == null
+                                          ? Text(user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
+                                              style: GoogleFonts.plusJakartaSans(fontSize: 30, fontWeight: FontWeight.bold, color: Colors.white))
+                                          : null,
+                                    ),
+                                  ),
+                                  if (_isUploadingPhoto)
+                                    const Positioned.fill(child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                                  else
+                                    Positioned(bottom: 0, right: 0, child: Container(
+                                      padding: const EdgeInsets.all(5),
+                                      decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                                      child: Icon(Icons.camera_alt, size: 13, color: _getRankColor(rank)),
+                                    )),
+                                ],
+                              ),
                             ),
-                          )
-                        : const Text(
-                            'Save Changes',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
+                            const SizedBox(width: 16),
+                            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                              Text(user.name, style: GoogleFonts.plusJakartaSans(fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white)),
+                              Text(user.email, style: GoogleFonts.inter(fontSize: 12, color: Colors.white70)),
+                              const SizedBox(height: 6),
+                              Row(children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                                  decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(20)),
+                                  child: Text(rank.toUpperCase(), style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.white, letterSpacing: 1)),
+                                ),
+                                if (user.isPremium) ...[
+                                  const SizedBox(width: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                    decoration: BoxDecoration(color: const Color(0xFFFFF8E1), borderRadius: BorderRadius.circular(20)),
+                                    child: Text('PRO', style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w700, color: const Color(0xFFFF8F00))),
+                                  ),
+                                ],
+                              ]),
+                            ])),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        // XP bar
+                        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                            Text('Level ${user.level}', style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
+                            Text('${user.xp} / $nextLevelXp XP', style: GoogleFonts.inter(fontSize: 11, color: Colors.white70)),
+                          ]),
+                          const SizedBox(height: 6),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: LinearProgressIndicator(
+                              value: xpProgress, minHeight: 8,
+                              backgroundColor: Colors.white24,
+                              valueColor: const AlwaysStoppedAnimation(Colors.white),
                             ),
                           ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: TextButton(
-                    onPressed: () => ref.read(authServiceProvider).signOut(),
-                    child: const Text(
-                      'Logout',
-                      style: TextStyle(
-                        color: Colors.red,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
+                        ]),
+                      ],
                     ),
                   ),
                 ),
-                const SizedBox(height: 40),
-              ],
+              ),
             ),
           ),
-        ),
+
+          // ── Stats Row ─────────────────────────────────────────────────────
+          SliverToBoxAdapter(child: _buildStatsRow(user, logsAsync)),
+
+          // ── Badges ────────────────────────────────────────────────────────
+          if (user.badges.isNotEmpty) ...[
+            SliverToBoxAdapter(child: _buildSectionHeader('Trophy Case', Icons.emoji_events, Colors.amber)),
+            SliverToBoxAdapter(child: _buildBadgesGrid(user)),
+          ],
+
+          // ── Activity Feed ─────────────────────────────────────────────────
+          SliverToBoxAdapter(child: _buildSectionHeader('Recent Activity', Icons.timeline, AppColors.primary)),
+          SliverToBoxAdapter(child: _buildActivityFeed(logsAsync)),
+
+          // ── Tools ─────────────────────────────────────────────────────────
+          SliverToBoxAdapter(child: _buildSectionHeader('Health Tools', Icons.health_and_safety, AppColors.success)),
+          SliverToBoxAdapter(child: _buildToolsSection()),
+
+          // ── Edit Profile ──────────────────────────────────────────────────
+          SliverToBoxAdapter(child: _buildSectionHeader('Edit Profile', Icons.edit, AppColors.secondary)),
+          SliverToBoxAdapter(child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Column(children: [
+              _buildTextField('Full Name', _nameController, Icons.person_outline),
+              _buildTextField('Target Weight (kg)', _targetWeightController, Icons.track_changes, isNumber: true),
+              _buildGoalSelector(),
+              const SizedBox(height: 16),
+              SizedBox(width: double.infinity, child: ElevatedButton(
+                onPressed: _isSaving ? null : _saveProfile,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary, foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 15),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+                child: _isSaving
+                    ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                    : Text('Save Changes', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, fontSize: 15)),
+              )),
+              const SizedBox(height: 10),
+              SizedBox(width: double.infinity, child: OutlinedButton.icon(
+                onPressed: () => ref.read(authServiceProvider).signOut(),
+                icon: const Icon(Icons.logout, color: AppColors.danger),
+                label: Text('Logout', style: GoogleFonts.inter(color: AppColors.danger, fontWeight: FontWeight.w600)),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: AppColors.danger),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+              )),
+            ]),
+          )),
+          const SliverToBoxAdapter(child: SizedBox(height: 120)),
+        ],
       ),
     );
   }
 
-  Widget _buildProfileHeader(UserModel? user) {
-    if (user == null) return const SizedBox.shrink();
-    return Row(
-      children: [
-        GestureDetector(
-          onTap: _isUploadingPhoto ? null : _uploadProfilePhoto,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: AppColors.primary.withValues(alpha: 0.2),
-                    width: 2,
-                  ),
-                ),
-                child: CircleAvatar(
-                  radius: 40,
-                  backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                  backgroundImage: user.profileImageUrl != null 
-                      ? NetworkImage(user.profileImageUrl!) 
-                      : null,
-                  child: user.profileImageUrl == null
-                      ? Text(
-                          user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
-                          style: GoogleFonts.poppins(
-                            fontSize: 32,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.primary,
-                          ),
-                        )
-                      : null,
-                ),
-              ),
-              if (_isUploadingPhoto)
-                const CircularProgressIndicator(color: AppColors.primary)
-              else
-                Positioned(
-                  bottom: 0,
-                  right: 0,
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: const BoxDecoration(
-                      color: AppColors.primary,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.camera_alt, size: 14, color: Colors.white),
-                  ),
-                ),
-            ],
-          ),
-        ),
-        const SizedBox(width: 24),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                user.name,
-                style: GoogleFonts.poppins(
-                  fontSize: 26,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: -0.5,
-                ),
-              ),
-              Text(
-                user.email,
-                style: GoogleFonts.poppins(
-                  color: Theme.of(context).brightness == Brightness.light
-                      ? Colors.grey[600]
-                      : Colors.grey[400],
-                  fontSize: 14,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    ).animate().fadeIn(duration: 600.ms).slideX(begin: -0.1);
+  Widget _buildStatsRow(UserModel user, AsyncValue logsAsync) {
+    final logCount = logsAsync.when(data: (l) => (l as List).length, loading: () => 0, error: (e, _) => 0);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+      child: Row(
+        children: [
+          _StatChip(label: 'Friends', value: '${user.friends.length}', icon: Icons.people, color: AppColors.primary),
+          const SizedBox(width: 10),
+          _StatChip(label: 'Days Logged', value: '$logCount', icon: Icons.calendar_today, color: AppColors.success),
+          const SizedBox(width: 10),
+          _StatChip(label: 'Badges', value: '${user.badges.length}', icon: Icons.military_tech, color: Colors.amber),
+        ],
+      ).animate().fadeIn(duration: 400.ms),
+    );
   }
+
+  Widget _buildActivityFeed(AsyncValue logsAsync) {
+    return logsAsync.when(
+      data: (allLogs) {
+        final logs = (allLogs as List).take(7).toList();
+        if (logs.isEmpty) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16),
+                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8)]),
+              child: Center(child: Text('No logs yet — start tracking!', style: GoogleFonts.inter(color: AppColors.textLight))),
+            ),
+          );
+        }
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Column(
+            children: logs.asMap().entries.map((e) {
+              final log = e.value;
+              final score = log.calculateHealthScore();
+              final scoreColor = score >= 70 ? AppColors.success : score >= 40 ? AppColors.warning : AppColors.danger;
+              return Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.white, borderRadius: BorderRadius.circular(14),
+                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8)],
+                ),
+                child: Row(children: [
+                  Container(
+                    width: 44, height: 44,
+                    decoration: BoxDecoration(color: scoreColor.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
+                    child: Center(child: Text('$score', style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w800, color: scoreColor))),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(DateFormat('EEEE, MMM d').format(log.date),
+                        style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 2),
+                    Row(children: [
+                      if (log.steps != null) _ActivityChip('${_fmtNum(log.steps!.toDouble())} steps', Icons.directions_walk, Colors.orange),
+                      if (log.calories != null) _ActivityChip('${log.calories} kcal', Icons.local_fire_department, AppColors.accent),
+                      if (log.mood != null) _ActivityChip(_moodEmoji(log.mood!), Icons.mood, const Color(0xFF8B5CF6)),
+                    ]),
+                  ])),
+                  Text('Health\nScore', style: GoogleFonts.inter(fontSize: 9, color: AppColors.textLight, height: 1.3), textAlign: TextAlign.right),
+                ]),
+              ).animate().fadeIn(delay: (e.key * 50).ms);
+            }).toList(),
+          ),
+        );
+      },
+      loading: () => const Padding(padding: EdgeInsets.all(20), child: Center(child: CircularProgressIndicator())),
+      error: (e, _) => const SizedBox.shrink(),
+    );
+  }
+
+  Widget _buildSectionHeader(String title, IconData icon, Color color) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 10),
+      child: Row(children: [
+        Container(padding: const EdgeInsets.all(6), decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+            child: Icon(icon, color: color, size: 16)),
+        const SizedBox(width: 8),
+        Text(title, style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.text)),
+      ]),
+    );
+  }
+
+  Widget _buildBadgesGrid(UserModel user) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: GridView.builder(
+        shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, crossAxisSpacing: 10, mainAxisSpacing: 10, childAspectRatio: 0.9),
+        itemCount: user.badges.length,
+        itemBuilder: (context, index) {
+          final badge = user.badges[index];
+          final config = _getBadgeConfig(badge);
+          return Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border.all(color: config.color.withValues(alpha: 0.3)),
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [BoxShadow(color: config.color.withValues(alpha: 0.1), blurRadius: 8)],
+            ),
+            child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+              Icon(config.icon, color: config.color, size: 26),
+              const SizedBox(height: 4),
+              Text(badge, style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.text),
+                  textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis),
+            ]),
+          ).animate().fadeIn(delay: (index * 60).ms).scale(begin: const Offset(0.8, 0.8));
+        },
+      ),
+    );
+  }
+
+  String _moodEmoji(String mood) {
+    const map = {'happy': '😁', 'good': '😊', 'neutral': '😐', 'sad': '😢', 'angry': '😠'};
+    return map[mood] ?? mood;
+  }
+
+  String _fmtNum(double v) => v >= 1000 ? '${(v / 1000).toStringAsFixed(1)}k' : v.toInt().toString();
 
   Widget _buildToolsSection() {
     return Column(
@@ -452,25 +555,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  Widget _buildSectionTitle(String title) {
-    return Text(
-      title,
-      style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold),
-    );
-  }
-
-  Widget _buildInfoCard(List<Widget> children) {
-    return GlassCard(
-      width: double.infinity,
-      padding: const EdgeInsets.all(24),
-      borderRadius: 32,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: children,
-      ),
-    );
-  }
-
   Widget _buildTextField(
     String label,
     TextEditingController controller,
@@ -537,6 +621,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
+  // ignore: unused_element
   Widget _buildLanguageSelector() {
     final currentLocale = ref.watch(languageProvider);
     return Container(
@@ -566,111 +651,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  Widget _buildGamificationSection(UserModel? user) {
-    if (user == null) return const SizedBox.shrink();
-
-    final nextLevelXp = user.level * 1000;
-    final progress = user.xp / nextLevelXp;
-    final rank = user.getRankName();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Level & Rank Card
-        GlassCard(
-          padding: const EdgeInsets.all(24),
-          borderRadius: 24,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Level ${user.level}', style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 4),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                        decoration: BoxDecoration(
-                          gradient: _getRankGradient(rank),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          rank.toUpperCase(),
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 10, letterSpacing: 1.2),
-                        ),
-                      ),
-                    ],
-                  ),
-                  Icon(Icons.military_tech, size: 48, color: _getRankColor(rank)),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Text('${user.xp} / $nextLevelXp XP', style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.w500, fontSize: 12)),
-              const SizedBox(height: 6),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: LinearProgressIndicator(
-                  value: progress,
-                  minHeight: 10,
-                  backgroundColor: Colors.grey.withValues(alpha: 0.2),
-                  valueColor: AlwaysStoppedAnimation(_getRankColor(rank)),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 24),
-        if (user.badges.isNotEmpty) ...[
-          Text('Trophy Case', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 16),
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-              childAspectRatio: 0.9,
-            ),
-            itemCount: user.badges.length,
-            itemBuilder: (context, index) {
-              final badge = user.badges[index];
-              final config = _getBadgeConfig(badge);
-              return Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [config.color.withValues(alpha: 0.2), config.color.withValues(alpha: 0.05)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  border: Border.all(color: config.color.withValues(alpha: 0.3)),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(config.icon, color: config.color, size: 24),
-                    const Spacer(),
-                    Text(
-                      badge,
-                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ],
-      ],
-    );
-  }
-
   Color _getRankColor(String rank) {
     switch (rank.toLowerCase()) {
       case 'bronze': return const Color(0xFFCD7F32);
@@ -680,18 +660,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       case 'diamond': return const Color(0xFFb9f2ff);
       case 'master': return const Color(0xFFFF4081);
       default: return AppColors.primary;
-    }
-  }
-
-  LinearGradient _getRankGradient(String rank) {
-    switch (rank.toLowerCase()) {
-      case 'bronze': return const LinearGradient(colors: [Color(0xFFCD7F32), Color(0xFF8C5622)]);
-      case 'silver': return const LinearGradient(colors: [Color(0xFFE0E0E0), Color(0xFF9E9E9E)]);
-      case 'gold': return const LinearGradient(colors: [Color(0xFFFFDF00), Color(0xFFD4AF37)]);
-      case 'platinum': return const LinearGradient(colors: [Color(0xFFE5E4E2), Color(0xFF9E9E9E)]);
-      case 'diamond': return const LinearGradient(colors: [Color(0xFF89CFF0), Color(0xFF007FFF)]);
-      case 'master': return const LinearGradient(colors: [Color(0xFFFF4081), Color(0xFFE040FB)]);
-      default: return const LinearGradient(colors: [AppColors.primary, Colors.teal]);
     }
   }
 
@@ -709,4 +677,53 @@ class _BadgeConfig {
   final IconData icon;
   final Color color;
   _BadgeConfig(this.icon, this.color);
+}
+
+class _StatChip extends StatelessWidget {
+  final String label;
+  final String value;
+  final IconData icon;
+  final Color color;
+  const _StatChip({required this.label, required this.value, required this.icon, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 8)],
+        ),
+        child: Column(children: [
+          Icon(icon, color: color, size: 20),
+          const SizedBox(height: 4),
+          Text(value, style: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.text)),
+          Text(label, style: GoogleFonts.inter(fontSize: 10, color: AppColors.textLight)),
+        ]),
+      ),
+    );
+  }
+}
+
+class _ActivityChip extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final Color color;
+  const _ActivityChip(this.label, this.icon, this.color);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(right: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(icon, size: 10, color: color),
+        const SizedBox(width: 3),
+        Text(label, style: GoogleFonts.inter(fontSize: 10, color: color, fontWeight: FontWeight.w600)),
+      ]),
+    );
+  }
 }

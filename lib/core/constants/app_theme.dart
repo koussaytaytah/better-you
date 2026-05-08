@@ -21,6 +21,11 @@ class AppColors {
   static const Color darkTextLight = Color(0xFF94A3B8); // Cool Grey
 }
 
+class AppSpacing {
+  // Height needed to clear the floating bottom nav bar (70px bar + 24px margin)
+  static const double navBarClearance = 110.0;
+}
+
 class AppTheme {
   static ThemeData get theme {
     return ThemeData(

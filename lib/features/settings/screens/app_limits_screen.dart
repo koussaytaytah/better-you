@@ -177,8 +177,8 @@ class _AppLimitsScreenState extends ConsumerState<AppLimitsScreen> {
   @override
   Widget build(BuildContext context) {
     final filteredApps = _installedApps.where((app) {
-      final name = (app.name ?? '').toLowerCase();
-      final pkg = (app.packageName ?? '').toLowerCase();
+      final name = app.name.toLowerCase();
+      final pkg = app.packageName.toLowerCase();
       return name.contains(_searchQuery.toLowerCase()) || pkg.contains(_searchQuery.toLowerCase());
     }).toList();
 
@@ -286,7 +286,7 @@ class _AppLimitsScreenState extends ConsumerState<AppLimitsScreen> {
                                 : const Icon(Icons.android, size: 30, color: Colors.grey),
                           ),
                           title: Text(
-                            app.name ?? 'Unknown App',
+                            app.name,
                             style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 15),
                           ),
                           subtitle: Text(
@@ -306,7 +306,7 @@ class _AppLimitsScreenState extends ConsumerState<AppLimitsScreen> {
                                 ),
                               Switch(
                                 value: isLocked,
-                                activeColor: AppColors.primary,
+                                activeThumbColor: AppColors.primary,
                                 onChanged: (val) {
                                   if (val) {
                                     _showLimitDialog(app);

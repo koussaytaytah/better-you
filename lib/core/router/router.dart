@@ -17,6 +17,16 @@ import '../../features/dashboard/screens/profile_screen.dart';
 import '../../features/community/screens/global_chat_screen.dart';
 import '../../features/community/screens/leaderboard_screen.dart';
 import '../../features/main_layout/screens/main_scaffold.dart';
+import '../../features/nutrition/screens/nutrition_dashboard_screen.dart';
+import '../../features/nutrition/screens/recipes_screen.dart';
+import '../../features/nutrition/screens/meal_planning_screen.dart';
+import '../../features/settings/screens/notification_settings_screen.dart';
+import '../../features/gamification/screens/leaderboard_screen.dart' as gamification;
+import '../../features/profile/screens/edit_profile_screen.dart';
+import '../../features/coach/screens/browse_coaches_screen.dart';
+import '../../features/coach/screens/my_sessions_screen.dart';
+import '../../features/subscription/screens/paywall_screen.dart';
+import '../../features/settings/screens/terms_screen.dart';
 
 import '../../shared/providers/auth_provider.dart';
 
@@ -151,6 +161,53 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/pending-verification',
         builder: (context, state) => const PendingVerificationScreen(),
+      ),
+      GoRoute(
+        path: '/nutrition',
+        builder: (context, state) => const NutritionDashboardScreen(),
+      ),
+      GoRoute(
+        path: '/recipes',
+        builder: (context, state) => const RecipesScreen(),
+      ),
+      GoRoute(
+        path: '/meal-plan',
+        builder: (context, state) => const MealPlanningScreen(),
+      ),
+      GoRoute(
+        path: '/notifications',
+        builder: (context, state) => const NotificationSettingsScreen(),
+      ),
+      GoRoute(
+        path: '/leaderboard',
+        builder: (context, state) => const gamification.LeaderboardScreen(),
+      ),
+      GoRoute(
+        path: '/edit-profile',
+        builder: (context, state) => const EditProfileScreen(),
+      ),
+      GoRoute(
+        path: '/browse-coaches',
+        builder: (context, state) => const BrowseCoachesScreen(),
+      ),
+      GoRoute(
+        path: '/my-sessions',
+        builder: (context, state) {
+          final userId = state.extra as String? ?? '';
+          return MySessionsScreen(userId: userId);
+        },
+      ),
+      GoRoute(
+        path: '/paywall',
+        builder: (context, state) => const PaywallScreen(),
+      ),
+      GoRoute(
+        path: '/terms',
+        builder: (context, state) => const LegalScreen(type: LegalDocType.terms),
+      ),
+      GoRoute(
+        path: '/privacy',
+        builder: (context, state) => const LegalScreen(type: LegalDocType.privacy),
       ),
     ],
     errorBuilder: (context, state) =>

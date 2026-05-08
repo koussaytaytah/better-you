@@ -1,0 +1,14 @@
+{
+  "collectionId": "messages",
+  "fields": [
+    {
+      "fieldPath": "roomId",
+      "order": "ASCENDING"
+    },
+    {
+      "fieldPath": "timestamp",
+      "order": "ASCENDING"
+    }
+  ],
+  "queryScope": "COLLECTION"
+}

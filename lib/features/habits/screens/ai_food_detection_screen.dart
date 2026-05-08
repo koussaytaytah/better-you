@@ -8,7 +8,6 @@ import 'package:image_picker/image_picker.dart';
 import '../../../core/constants/app_theme.dart';
 import '../../../shared/providers/auth_provider.dart';
 import '../../../shared/providers/data_provider.dart';
-import '../../../shared/models/daily_log_model.dart';
 
 class AIFoodDetectionScreen extends ConsumerStatefulWidget {
   const AIFoodDetectionScreen({super.key});

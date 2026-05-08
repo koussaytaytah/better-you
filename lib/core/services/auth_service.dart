@@ -51,4 +51,18 @@ class AuthService {
         .doc(user.uid)
         .update(user.toFirestore());
   }
+
+  Future<void> sendEmailVerification() async {
+    await _auth.currentUser?.sendEmailVerification();
+  }
+
+  Future<void> sendPasswordResetEmail(String email) async {
+    await _auth.sendPasswordResetEmail(email: email);
+  }
+
+  bool get isEmailVerified => _auth.currentUser?.emailVerified ?? false;
+
+  Future<void> reloadUser() async {
+    await _auth.currentUser?.reload();
+  }
 }

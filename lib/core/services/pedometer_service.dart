@@ -1,9 +1,7 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'package:pedometer/pedometer.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../repositories/daily_log_repository.dart';
 import '../../shared/providers/data_provider.dart';
 import '../../shared/providers/auth_provider.dart';
 import 'package:logger/logger.dart';
@@ -73,7 +71,7 @@ class PedometerService {
     }
   }
 
-  void _onStepCountError(error) {
+  void _onStepCountError(dynamic error) {
     _logger.e('Pedometer Stream Error: $error');
   }
 

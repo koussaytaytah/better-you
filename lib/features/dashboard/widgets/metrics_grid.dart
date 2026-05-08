@@ -91,7 +91,7 @@ class MetricsGrid extends ConsumerWidget {
             _buildMetricCard(
               context,
               ref,
-              '${log.alcohol?.toStringAsFixed(1) ?? "0.0"}',
+              log.alcohol?.toStringAsFixed(1) ?? "0.0",
               'Alcohol',
               Icons.wine_bar_rounded,
               const Color(0xFFFF4081),
@@ -216,7 +216,7 @@ class MetricsGrid extends ConsumerWidget {
                       .updateDailyLog(user.uid, DateTime.now(), {field: value});
                   ref.invalidate(todayLogProvider);
                 }
-                Navigator.pop(context);
+                if (context.mounted) Navigator.pop(context);
               }
             },
             child: const Text('Update'),

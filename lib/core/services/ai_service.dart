@@ -286,5 +286,192 @@ class AIService {
     }
   }
 
+  Future<Map<String, dynamic>?> analyzeFoodImageMultiItem(String base64Image) async {
+    try {
+      final prompt = """
+        You are an expert nutritionist. Analyze this food image with extremely high precision.
+        This image may contain MULTIPLE food items on a plate or multiple dishes. 
+        
+        For each distinct food item you identify:
+        - Estimate the exact portion size visually
+        - Calculate precise macronutrients based on professional nutritional databases
+        
+        Return ONLY a valid JSON object with this structure:
+        {
+          "meal_name": "Brief description of the overall meal",
+          "items": [
+            {
+              "name": "Food item name with portion (e.g., 'Grilled Chicken Breast (150g)')",
+              "calories": integer (total calories for this item),
+              "protein": double (protein in grams),
+              "carbs": double (carbs in grams),
+              "fat": double (fat in grams)
+            }
+          ],
+          "total_calories": integer (sum of all items),
+          "total_protein": double (sum of all items),
+          "total_carbs": double (sum of all items),
+          "total_fat": double (sum of all items)
+        }
+
+        Example for a meal with multiple items:
+        {
+          "meal_name": "Balanced Lunch Plate",
+          "items": [
+            {"name": "Grilled Chicken Breast (150g)", "calories": 248, "protein": 46.0, "carbs": 0.0, "fat": 5.2},
+            {"name": "Steamed Broccoli (100g)", "calories": 34, "protein": 2.8, "carbs": 6.6, "fat": 0.4},
+            {"name": "Brown Rice (1 cup)", "calories": 216, "protein": 5.0, "carbs": 45.0, "fat": 1.8}
+          ],
+          "total_calories": 498,
+          "total_protein": 53.8,
+          "total_carbs": 51.6,
+          "total_fat": 7.4
+        }
+        
+        DO NOT include any markdown, code blocks, or introductory text. Return ONLY the raw JSON object.
+        """;
+
+      final apiKey = AppConstants.geminiToken;
+      final uri = Uri.parse('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$apiKey');
+
+      final response = await http.post(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'contents': [
+            {
+              'parts': [
+                {'text': prompt},
+                {
+                  'inline_data': {
+                    'mime_type': 'image/jpeg',
+                    'data': base64Image,
+                  }
+                }
+              ]
+            }
+          ],
+          'generationConfig': {
+             'responseMimeType': 'application/json',
+             'temperature': 0.1,
+          }
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        String content = data['candidates'][0]['content']['parts'][0]['text'] ?? "{}";
+        AppLogger.d('Raw Multi-Item Food Analysis Response: $content');
+
+        if (content.contains('{')) {
+          content = content.substring(
+            content.indexOf('{'),
+            content.lastIndexOf('}') + 1,
+          );
+        }
+
+        try {
+          return jsonDecode(content);
+        } catch (e) {
+          AppLogger.e('Multi-Item Food Analysis JSON Parse Error: $e. Content: $content');
+          return null;
+        }
+      } else {
+        AppLogger.e('Multi-Item Food Analysis API Error: ${response.statusCode} - ${response.body}');
+        return null;
+      }
+    } catch (e, stack) {
+      AppLogger.e('Multi-Item Food Analysis Exception', e, stack);
+      return null;
+    }
+  }
+
+  Future<Map<String, dynamic>?> getRecipeFromImage(String base64Image) async {
+    try {
+      final prompt = """
+        You are a professional chef and nutritionist. Look at this food image and:
+        1. Identify the dish (or dishes if multiple items)
+        2. Provide a recipe to recreate it
+        3. Estimate the nutritional information
+        
+        Return ONLY a valid JSON object with this structure:
+        {
+          "dish_name": "Name of the dish",
+          "description": "Brief description",
+          "ingredients": ["ingredient 1", "ingredient 2", ...],
+          "instructions": ["Step 1", "Step 2", ...],
+          "prep_time_minutes": integer,
+          "cook_time_minutes": integer,
+          "servings": integer,
+          "difficulty": "Easy|Medium|Hard",
+          "calories_per_serving": integer,
+          "protein_per_serving": double,
+          "carbs_per_serving": double,
+          "fat_per_serving": double,
+          "tags": ["tag1", "tag2"]
+        }
+        
+        DO NOT include any markdown, code blocks, or introductory text. Return ONLY the raw JSON object.
+        """;
+
+      final apiKey = AppConstants.geminiToken;
+      final uri = Uri.parse('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$apiKey');
+
+      final response = await http.post(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'contents': [
+            {
+              'parts': [
+                {'text': prompt},
+                {
+                  'inline_data': {
+                    'mime_type': 'image/jpeg',
+                    'data': base64Image,
+                  }
+                }
+              ]
+            }
+          ],
+          'generationConfig': {
+             'responseMimeType': 'application/json',
+             'temperature': 0.3,
+          }
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        String content = data['candidates'][0]['content']['parts'][0]['text'] ?? "{}";
+        AppLogger.d('Raw Recipe From Image Response: $content');
+
+        if (content.contains('{')) {
+          content = content.substring(
+            content.indexOf('{'),
+            content.lastIndexOf('}') + 1,
+          );
+        }
+
+        try {
+          return jsonDecode(content);
+        } catch (e) {
+          AppLogger.e('Recipe From Image JSON Parse Error: $e. Content: $content');
+          return null;
+        }
+      } else {
+        AppLogger.e('Recipe From Image API Error: ${response.statusCode} - ${response.body}');
+        return null;
+      }
+    } catch (e, stack) {
+      AppLogger.e('Recipe From Image Exception', e, stack);
+      return null;
+    }
+  }
+
 }
 

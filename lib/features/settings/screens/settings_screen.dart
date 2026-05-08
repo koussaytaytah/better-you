@@ -7,6 +7,7 @@ import '../../../shared/providers/language_provider.dart';
 import '../../../shared/providers/theme_provider.dart';
 import '../../../core/constants/app_theme.dart';
 import 'app_limits_screen.dart';
+import 'terms_screen.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -112,6 +113,24 @@ class SettingsScreen extends ConsumerWidget {
               subtitle: '1.0.0',
               icon: Icons.info_outline,
             ),
+            _buildSettingTile(
+              context: context,
+              title: 'Terms of Service',
+              subtitle: 'Read our terms and conditions',
+              icon: Icons.gavel_outlined,
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const LegalScreen(type: LegalDocType.terms)),
+              ),
+            ),
+            _buildSettingTile(
+              context: context,
+              title: 'Privacy Policy',
+              subtitle: 'How we handle your data',
+              icon: Icons.privacy_tip_outlined,
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const LegalScreen(type: LegalDocType.privacy)),
+              ),
+            ),
             const SizedBox(height: 32),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -160,7 +179,6 @@ class SettingsScreen extends ConsumerWidget {
     Widget? trailing,
     VoidCallback? onTap,
   }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(

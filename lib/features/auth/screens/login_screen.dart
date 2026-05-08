@@ -6,7 +6,9 @@ import '../../../core/constants/app_theme.dart';
 import '../../../shared/providers/auth_provider.dart';
 import '../../../shared/widgets/custom_button.dart';
 import '../../../shared/widgets/custom_text_field.dart';
+import '../../../shared/widgets/social_login_buttons.dart';
 import 'register_screen.dart';
+import 'email_verification_screen.dart';
 import '../../../core/utils/auth_error_handler.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -47,16 +49,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           .signIn(_emailController.text.trim(), _passwordController.text.trim())
           .timeout(const Duration(seconds: 15));
 
-      if (!mounted) {
+      if (!mounted) return;
+
+      // Block unverified email addresses
+      await authService.reloadUser();
+      if (!authService.isEmailVerified) {
+        await authService.signOut();
+        if (mounted) {
+          Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const EmailVerificationScreen()),
+          );
+        }
         return;
       }
 
       // Refresh the current user state before navigating
       await ref.read(currentUserAsyncProvider.notifier).refreshUser();
 
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
 
       context.go('/dashboard');
     } catch (e) {
@@ -84,6 +94,65 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         margin: const EdgeInsets.all(16),
       ),
     );
+  }
+
+  Future<void> _showForgotPasswordDialog() async {
+    final emailCtrl = TextEditingController(text: _emailController.text.trim());
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Reset Password'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Enter your email address and we\'ll send you a link to reset your password.'),
+            const SizedBox(height: 16),
+            TextField(
+              controller: emailCtrl,
+              keyboardType: TextInputType.emailAddress,
+              decoration: InputDecoration(
+                labelText: 'Email',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                prefixIcon: const Icon(Icons.email_outlined),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () async {
+              final email = emailCtrl.text.trim();
+              if (email.isEmpty) return;
+              final messenger = ScaffoldMessenger.of(context);
+              try {
+                await ref.read(authServiceProvider).sendPasswordResetEmail(email);
+                if (ctx.mounted) {
+                  Navigator.pop(ctx);
+                  messenger.showSnackBar(
+                    const SnackBar(
+                      content: Text('Password reset email sent! Check your inbox.'),
+                      backgroundColor: AppColors.success,
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (ctx.mounted) {
+                  messenger.showSnackBar(
+                    SnackBar(content: Text(AuthErrorHandler.getFriendlyErrorMessage(e))),
+                  );
+                }
+              }
+            },
+            style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
+            child: const Text('Send Reset Link'),
+          ),
+        ],
+      ),
+    );
+    emailCtrl.dispose();
   }
 
   void _handleTitleTap() {
@@ -179,7 +248,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton(
-                    onPressed: () {},
+                    onPressed: _showForgotPasswordDialog,
                     child: const Text('Forgot Password?'),
                   ),
                 ).animate().fadeIn(delay: 600.ms),
@@ -190,6 +259,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ? const Center(child: CircularProgressIndicator())
                       : CustomButton(text: 'Sign In', onPressed: _login),
                 ).animate().fadeIn(delay: 700.ms).scale(),
+                const SizedBox(height: 30),
+                
+                // Social Login Buttons
+                SocialLoginButtons(
+                  isLoading: _isLoading,
+                  onLoadingChanged: (loading) => setState(() => _isLoading = loading),
+                ).animate().fadeIn(delay: 750.ms),
+                
                 const SizedBox(height: 30),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,

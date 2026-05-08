@@ -1,20 +1,25 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../habits/screens/habit_tracker_screen.dart';
-import '../../habits/screens/ai_food_detection_screen.dart';
 import '../../habits/screens/daily_metrics_screen.dart';
 import '../../statistics/screens/statistics_screen.dart';
 import '../../community/screens/community_feed_screen.dart';
 import '../screens/ai_chatbot_screen.dart';
 import '../screens/bmi_calculator_screen.dart';
 import '../screens/progress_calendar_screen.dart';
+import '../../nutrition/screens/nutrition_dashboard_screen.dart';
+import '../../nutrition/screens/enhanced_food_detection_screen.dart';
+import '../../nutrition/screens/recipes_screen.dart';
+import '../../nutrition/screens/meal_planning_screen.dart';
+import '../../settings/screens/notification_settings_screen.dart';
 
-import 'package:go_router/go_router.dart';
 
-import '../../community/screens/leaderboard_screen.dart';
+import '../../gamification/screens/leaderboard_screen.dart' as gamification;
+import '../../profile/screens/edit_profile_screen.dart';
 import '../../community/screens/professionals_directory_screen.dart';
+import '../../coach/screens/browse_coaches_screen.dart';
+import '../../subscription/screens/paywall_screen.dart';
 import '../../settings/screens/app_limits_screen.dart';
 import '../../../../shared/widgets/glass_card.dart';
 
@@ -36,10 +41,16 @@ class QuickActionsGrid extends StatelessWidget {
     // Consolidated actions! Track Habits, Photo Calorie, Daily Quests used to all go to HabitTrackerScreen
     final actions = [
       {
-        'title': 'Leaderboard',
+        'title': 'XP Rankings',
         'icon': Icons.emoji_events,
         'color': const Color(0xFFFFD700),
-        'screen': const LeaderboardScreen(),
+        'screen': const gamification.LeaderboardScreen(),
+      },
+      {
+        'title': 'Edit Profile',
+        'icon': Icons.person_outline,
+        'color': const Color(0xFF6C63FF),
+        'screen': const EditProfileScreen(),
       },
       {
         'title': 'Quests Tracker',
@@ -51,7 +62,31 @@ class QuickActionsGrid extends StatelessWidget {
         'title': 'AI Food',
         'icon': Icons.camera_alt,
         'color': const Color(0xFF2979FF),
-        'screen': const AIFoodDetectionScreen(),
+        'screen': const EnhancedFoodDetectionScreen(),
+      },
+      {
+        'title': 'Nutrition',
+        'icon': Icons.restaurant_menu,
+        'color': const Color(0xFF00C853),
+        'screen': const NutritionDashboardScreen(),
+      },
+      {
+        'title': 'Recipes',
+        'icon': Icons.menu_book,
+        'color': const Color(0xFFFF6D00),
+        'screen': const RecipesScreen(),
+      },
+      {
+        'title': 'Meal Plan',
+        'icon': Icons.calendar_today,
+        'color': const Color(0xFF00BCD4),
+        'screen': const MealPlanningScreen(),
+      },
+      {
+        'title': 'Notifications',
+        'icon': Icons.notifications,
+        'color': const Color(0xFF9C27B0),
+        'screen': const NotificationSettingsScreen(),
       },
       {
         'title': 'Life Metrics',
@@ -71,7 +106,19 @@ class QuickActionsGrid extends StatelessWidget {
         'color': const Color(0xFFFF5252),
         'screen': const AppLimitsScreen(),
       },
-      if (!isSimpleMode) ...[
+      {
+        'title': 'Find Coach',
+        'icon': Icons.sports,
+        'color': const Color(0xFF1565C0),
+        'screen': const BrowseCoachesScreen(),
+      },
+      {
+        'title': 'Go Premium',
+        'icon': Icons.workspace_premium,
+        'color': const Color(0xFFFF8F00),
+        'screen': const PaywallScreen(),
+      },
+    if (!isSimpleMode) ...[
         {
           'title': 'Community',
           'icon': Icons.group,

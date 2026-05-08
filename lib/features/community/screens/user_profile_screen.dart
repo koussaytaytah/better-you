@@ -5,7 +5,7 @@ import '../../../core/constants/app_theme.dart';
 import '../../../shared/models/user_model.dart';
 import '../../../shared/providers/auth_provider.dart';
 import '../../../shared/providers/data_provider.dart';
-
+import '../../../core/services/fcm_service.dart';
 import 'package:intl/intl.dart';
 import '../../chat/screens/chat_room_screen.dart';
 import 'post_detail_screen.dart';
@@ -26,10 +26,48 @@ class UserProfileScreen extends ConsumerWidget {
         title: const Text('User Profile'),
         actions: [
           if (currentUser != null && currentUser.uid != userId)
-            IconButton(
-              icon: const Icon(Icons.report_outlined),
-              onPressed: () =>
-                  _showReportDialog(context, ref, currentUser.uid, userId),
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert),
+              onSelected: (value) {
+                if (value == 'report') {
+                  _showReportDialog(context, ref, currentUser.uid, userId);
+                } else if (value == 'block') {
+                  _confirmBlock(context, ref, currentUser.uid, userId);
+                } else if (value == 'unblock') {
+                  _unblock(context, ref, currentUser.uid, userId);
+                }
+              },
+              itemBuilder: (_) {
+                final isBlocked = currentUser.blockedUsers.contains(userId);
+                return [
+                  if (!isBlocked)
+                    const PopupMenuItem(
+                      value: 'block',
+                      child: Row(children: [
+                        Icon(Icons.block, color: Colors.red, size: 20),
+                        SizedBox(width: 12),
+                        Text('Block user'),
+                      ]),
+                    )
+                  else
+                    const PopupMenuItem(
+                      value: 'unblock',
+                      child: Row(children: [
+                        Icon(Icons.check_circle, color: Colors.green, size: 20),
+                        SizedBox(width: 12),
+                        Text('Unblock user'),
+                      ]),
+                    ),
+                  const PopupMenuItem(
+                    value: 'report',
+                    child: Row(children: [
+                      Icon(Icons.flag_outlined, size: 20),
+                      SizedBox(width: 12),
+                      Text('Report user'),
+                    ]),
+                  ),
+                ];
+              },
             ),
         ],
       ),
@@ -141,8 +179,15 @@ class UserProfileScreen extends ConsumerWidget {
                                 .read(userRepositoryProvider)
                                 .sendFriendRequest(currentUser.uid, user.uid);
 
-                            // Also update current user's locally or trigger a reload
-                            // In a real app, we might want a 'sentRequests' field in UserModel
+                            FCMService().sendNotificationToUser(
+                              toUserId: user.uid,
+                              fromUserId: currentUser.uid,
+                              fromUserName: currentUser.name,
+                              type: 'friend_request',
+                              title: 'New Friend Request 👋',
+                              body: '${currentUser.name} sent you a friend request.',
+                              data: {'fromUserId': currentUser.uid, 'screen': 'friends'},
+                            );
 
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
@@ -494,6 +539,53 @@ class UserProfileScreen extends ConsumerWidget {
     if (badge.contains('Early Bird')) return _BadgeConfig(Icons.wb_sunny, Colors.orange);
     if (badge.contains('Post Star')) return _BadgeConfig(Icons.star, Colors.amber);
     return _BadgeConfig(Icons.emoji_events, AppColors.primary);
+  }
+
+  void _confirmBlock(
+    BuildContext context,
+    WidgetRef ref,
+    String currentUserId,
+    String blockedUserId,
+  ) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Block this user?'),
+        content: const Text(
+          "You won't see their posts or messages anymore. You can unblock them anytime from their profile.",
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          FilledButton.tonal(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red.withValues(alpha: 0.15), foregroundColor: Colors.red),
+            onPressed: () async {
+              await ref.read(userRepositoryProvider).blockUser(currentUserId, blockedUserId);
+              if (ctx.mounted) {
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('User blocked')),
+                );
+              }
+            },
+            child: const Text('Block'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _unblock(
+    BuildContext context,
+    WidgetRef ref,
+    String currentUserId,
+    String blockedUserId,
+  ) async {
+    await ref.read(userRepositoryProvider).unblockUser(currentUserId, blockedUserId);
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('User unblocked')),
+      );
+    }
   }
 
   void _showReportDialog(

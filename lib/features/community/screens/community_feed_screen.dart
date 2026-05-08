@@ -20,6 +20,8 @@ import 'global_chat_screen.dart';
 import 'leaderboard_screen.dart';
 import 'post_detail_screen.dart';
 import 'group_quests_screen.dart';
+import '../../../shared/widgets/empty_state.dart';
+import '../../../shared/widgets/loading_skeleton.dart';
 
 class CommunityFeedScreen extends ConsumerStatefulWidget {
   const CommunityFeedScreen({super.key});
@@ -355,8 +357,24 @@ class _CommunityFeedScreenState extends ConsumerState<CommunityFeedScreen> {
                   child: postsAsync.when(
                     data: (posts) {
                       if (posts.isEmpty) {
-                        return const Center(
-                          child: Text('No posts yet. Be the first!'),
+                        return RefreshIndicator(
+                          onRefresh: () async {
+                            ref.invalidate(postsProvider);
+                            await Future.delayed(const Duration(milliseconds: 500));
+                          },
+                          child: ListView(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            children: [
+                              SizedBox(
+                                height: MediaQuery.of(context).size.height * 0.55,
+                                child: const EmptyState(
+                                  icon: Icons.forum_outlined,
+                                  title: 'Be the first to post',
+                                  message: 'Share a tip, ask a question, celebrate a win — your community is here.',
+                                ),
+                              ),
+                            ],
+                          ),
                         );
                       }
                       return RefreshIndicator(
@@ -383,8 +401,7 @@ class _CommunityFeedScreenState extends ConsumerState<CommunityFeedScreen> {
                         ),
                       );
                     },
-                    loading: () =>
-                        const Center(child: CircularProgressIndicator()),
+                    loading: () => const PostCardSkeleton(),
                     error: (err, stack) => Center(child: Text('Error: $err')),
                   ),
                 ),

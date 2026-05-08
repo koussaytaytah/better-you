@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -10,7 +12,11 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:go_router/go_router.dart';
 import 'firebase_options.dart';
 import 'core/services/notification_service.dart';
+import 'core/services/fcm_service.dart';
+import 'core/services/sound_service.dart';
+import 'core/services/in_app_notification_listener.dart';
 import 'shared/models/daily_log_model.dart';
+import 'core/repositories/notification_settings_repository.dart';
 
 import 'core/constants/app_theme.dart';
 import 'shared/providers/language_provider.dart';
@@ -20,7 +26,6 @@ import 'package:better_you/l10n/app_localizations.dart';
 
 import 'shared/providers/auth_provider.dart';
 import 'shared/providers/data_provider.dart';
-import 'core/services/background_service.dart';
 import 'core/router/router.dart';
 import 'shared/providers/lock_provider.dart';
 import 'features/dashboard/screens/screen_time_lock_screen.dart';
@@ -35,7 +40,34 @@ void main() async {
     DeviceOrientation.portraitDown,
   ]);
 
-  runApp(const ProviderScope(child: AppInitializer()));
+  // Edge-to-edge with transparent status bar — modern look on Android & iOS
+  await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    statusBarIconBrightness: Brightness.light,
+    statusBarBrightness: Brightness.dark,
+    systemNavigationBarColor: Colors.transparent,
+    systemNavigationBarIconBrightness: Brightness.dark,
+  ));
+
+  // Catch all Flutter framework errors
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+    if (!kDebugMode) {
+      FirebaseCrashlytics.instance.recordFlutterFatalError(details);
+    }
+  };
+
+  // Catch all async/Dart errors outside Flutter
+  runZonedGuarded(
+    () => runApp(const ProviderScope(child: AppInitializer())),
+    (error, stack) {
+      debugPrint('BetterYou: Uncaught error: $error');
+      if (!kDebugMode) {
+        FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+      }
+    },
+  );
 }
 
 class AppInitializer extends StatefulWidget {
@@ -62,13 +94,21 @@ class _AppInitializerState extends State<AppInitializer> {
 
       // 1. Firebase - absolute priority
       _updateStatus('Initializing Firebase...');
-      if (Firebase.apps.isEmpty) {
-        await Firebase.initializeApp(
-          options: DefaultFirebaseOptions.currentPlatform,
-        ).timeout(const Duration(seconds: 20));
-        debugPrint('BetterYou: Firebase initialized');
-      } else {
-        debugPrint('BetterYou: Firebase already initialized');
+      try {
+        if (Firebase.apps.isEmpty) {
+          await Firebase.initializeApp(
+            options: DefaultFirebaseOptions.currentPlatform,
+          ).timeout(const Duration(seconds: 20));
+          debugPrint('BetterYou: Firebase initialized');
+        } else {
+          debugPrint('BetterYou: Firebase already initialized');
+        }
+      } catch (e) {
+        if (e.toString().contains('duplicate-app') || e.toString().contains('already exists')) {
+          debugPrint('BetterYou: Firebase app already exists, continuing...');
+        } else {
+          rethrow;
+        }
       }
 
       // 2. Dotenv
@@ -93,15 +133,41 @@ class _AppInitializerState extends State<AppInitializer> {
         debugPrint('BetterYou: Hive init failed (non-fatal): $e');
       }
 
-      // 4. Notifications
+      // 4. Notifications (local + FCM)
       _updateStatus('Initializing notifications...');
       try {
         final notificationService = NotificationService();
         await notificationService.init();
         await notificationService.scheduleDailyReminder();
-        debugPrint('BetterYou: Notifications initialized');
+        debugPrint('BetterYou: Local notifications initialized');
       } catch (e) {
         debugPrint('BetterYou: Notification init failed (non-fatal): $e');
+      }
+
+      // 5. FCM (Firebase Cloud Messaging)
+      try {
+        final fcmService = FCMService();
+        await fcmService.init();
+        debugPrint('BetterYou: FCM initialized');
+      } catch (e) {
+        debugPrint('BetterYou: FCM init failed (non-fatal): $e');
+      }
+
+      // 5b. Sound effects
+      try {
+        await SoundService().init();
+        debugPrint('BetterYou: SoundService initialized');
+      } catch (e) {
+        debugPrint('BetterYou: SoundService init failed (non-fatal): $e');
+      }
+
+      // 6. Crashlytics
+      try {
+        await FirebaseCrashlytics.instance
+            .setCrashlyticsCollectionEnabled(!kDebugMode);
+        debugPrint('BetterYou: Crashlytics initialized');
+      } catch (e) {
+        debugPrint('BetterYou: Crashlytics init failed (non-fatal): $e');
       }
 
       _updateStatus('Finalizing...');
@@ -251,6 +317,8 @@ class _UserStatusWrapperState extends ConsumerState<UserStatusWrapper>
       _checkInitialLock();
       _initNotificationListener();
       _updateStatus(true);
+      _scheduleSmartNotifications();
+      _initFCM();
     });
   }
 
@@ -350,6 +418,49 @@ class _UserStatusWrapperState extends ConsumerState<UserStatusWrapper>
       ref.read(userRepositoryProvider).updateUserProfile(user.uid, {
         'isOnline': isOnline,
       });
+    }
+  }
+
+  // Save FCM token and init FCM for current user
+  void _initFCM() async {
+    final currentUserAsync = ref.read(currentUserAsyncProvider);
+    final user = currentUserAsync.value;
+    if (user == null) return;
+
+    try {
+      final fcmService = FCMService();
+      await fcmService.saveTokenForUser(user.uid);
+      await fcmService.subscribeToTopic('all_users');
+      debugPrint('BetterYou: FCM initialized for user ${user.uid}');
+    } catch (e) {
+      debugPrint('BetterYou: FCM init failed: $e');
+    }
+
+    // Free in-app push: listen to /notifications collection and fire local notifications
+    try {
+      await InAppNotificationListener().start(user.uid);
+      debugPrint('BetterYou: In-app notification listener started');
+    } catch (e) {
+      debugPrint('BetterYou: In-app listener failed: $e');
+    }
+  }
+
+  // Schedule smart notifications when user logs in
+  void _scheduleSmartNotifications() async {
+    final currentUserAsync = ref.read(currentUserAsyncProvider);
+    final user = currentUserAsync.value;
+    if (user == null) return;
+
+    try {
+      final repository = NotificationSettingsRepository();
+      final settings = await repository.getSettings(user.uid);
+      
+      final notificationService = NotificationService();
+      await notificationService.scheduleAllNotifications(settings);
+      
+      debugPrint('BetterYou: Smart notifications scheduled for user ${user.uid}');
+    } catch (e) {
+      debugPrint('BetterYou: Failed to schedule notifications: $e');
     }
   }
 

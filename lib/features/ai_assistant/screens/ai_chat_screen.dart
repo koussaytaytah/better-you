@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io' show File;
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -8,13 +7,14 @@ import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:record/record.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_tts/flutter_tts.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../../../core/constants/app_theme.dart';
 import '../../../core/services/ai_service.dart';
 import '../../../shared/providers/auth_provider.dart';
 import '../../../shared/providers/data_provider.dart';
+import '../../chat/widgets/audio_message_bubble.dart';
 
 final aiServiceProvider = Provider((ref) => AIService());
 

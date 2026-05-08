@@ -4,6 +4,7 @@ import 'dart:io' show File;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:image_picker/image_picker.dart' show XFile;
 import 'package:firebase_storage/firebase_storage.dart';
+import '../services/cloudinary_service.dart';
 import '../utils/logger.dart';
 import 'user_repository.dart';
 
@@ -29,6 +30,15 @@ class PostRepository {
 
   Future<String?> uploadPostImage(XFile imageFile, String postId) async {
     try {
+      // Try Cloudinary first (free 25 GB tier).
+      final cloud = CloudinaryService();
+      if (cloud.isConfigured) {
+        final url = await cloud.uploadImage(
+          imageFile.path,
+          folder: 'post_images',
+        );
+        if (url != null) return url;
+      }
       final ref = FirebaseStorage.instance
           .ref()
           .child('post_images')
@@ -82,12 +92,17 @@ class PostRepository {
     return _firestore
         .collection('comments')
         .where('postId', isEqualTo: postId)
-        .orderBy('timestamp', descending: true)
         .snapshots()
         .map((snap) {
-          return snap.docs
+          final list = snap.docs
               .map((doc) => {'id': doc.id, ...doc.data()})
               .toList();
+          list.sort((a, b) {
+            final aTime = (a['timestamp'] as Timestamp?)?.toDate() ?? DateTime(0);
+            final bTime = (b['timestamp'] as Timestamp?)?.toDate() ?? DateTime(0);
+            return bTime.compareTo(aTime);
+          });
+          return list;
         });
   }
 

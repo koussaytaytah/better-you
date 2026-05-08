@@ -7,7 +7,10 @@ import '../../../shared/models/user_model.dart';
 import '../../../shared/providers/auth_provider.dart';
 import '../../../shared/widgets/custom_button.dart';
 import '../../../shared/widgets/custom_text_field.dart';
+import '../../../shared/widgets/social_login_buttons.dart';
 import '../../../core/utils/auth_error_handler.dart';
+import '../../../features/settings/screens/terms_screen.dart';
+import 'email_verification_screen.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -23,6 +26,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   bool _isLoading = false;
+  bool _agreedToTerms = false;
 
   @override
   void dispose() {
@@ -35,6 +39,15 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   Future<void> _register() async {
     if (!_formKey.currentState!.validate()) return;
+    if (!_agreedToTerms) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please agree to the Terms of Service and Privacy Policy to continue.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
 
     setState(() => _isLoading = true);
 
@@ -61,8 +74,19 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
       await authService.createUserProfile(user);
 
+      // Send email verification (skip for admin accounts)
+      if (!isMasterAdmin) {
+        await authService.sendEmailVerification();
+      }
+
       if (mounted) {
-        context.go('/role-selection');
+        if (isMasterAdmin) {
+          context.go('/role-selection');
+        } else {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const EmailVerificationScreen()),
+          );
+        }
       }
     } catch (e) {
       if (!context.mounted) return;
@@ -116,7 +140,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   controller: _nameController,
                   label: 'Full Name',
                   validator: (value) {
-                    if (value?.isEmpty ?? true) return 'Please enter your name';
+                    if (value == null || value.trim().isEmpty) return 'Please enter your name';
+                    if (value.trim().length < 2) return 'Name must be at least 2 characters';
                     return null;
                   },
                 ),
@@ -126,11 +151,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   label: 'Email',
                   keyboardType: TextInputType.emailAddress,
                   validator: (value) {
-                    if (value?.isEmpty ?? true) {
-                      return 'Please enter your email';
-                    }
-                    if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value!)) {
-                      return 'Please enter a valid email';
+                    if (value == null || value.trim().isEmpty) return 'Email is required';
+                    if (!RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$').hasMatch(value.trim())) {
+                      return 'Enter a valid email address';
                     }
                     return null;
                   },
@@ -141,12 +164,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   label: 'Password',
                   obscureText: true,
                   validator: (value) {
-                    if (value?.isEmpty ?? true) {
-                      return 'Please enter a password';
-                    }
-                    if (value!.length < 6) {
-                      return 'Password must be at least 6 characters';
-                    }
+                    if (value == null || value.isEmpty) return 'Password is required';
+                    if (value.length < 8) return 'Password must be at least 8 characters';
+                    if (!RegExp(r'[A-Z]').hasMatch(value)) return 'Add at least one uppercase letter';
+                    if (!RegExp(r'[0-9]').hasMatch(value)) return 'Add at least one number';
                     return null;
                   },
                 ),
@@ -156,23 +177,93 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   label: 'Confirm Password',
                   obscureText: true,
                   validator: (value) {
-                    if (value != _passwordController.text) {
-                      return 'Passwords do not match';
-                    }
+                    if (value == null || value.isEmpty) return 'Please confirm your password';
+                    if (value != _passwordController.text) return 'Passwords do not match';
                     return null;
                   },
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 20),
+                _TermsCheckbox(
+                  value: _agreedToTerms,
+                  onChanged: (v) => setState(() => _agreedToTerms = v ?? false),
+                ),
+                const SizedBox(height: 20),
                 CustomButton(
                   text: 'Create Account',
                   onPressed: _register,
                   isLoading: _isLoading,
+                ),
+                const SizedBox(height: 24),
+                
+                // Social Login Buttons
+                SocialLoginButtons(
+                  isLoading: _isLoading,
+                  onLoadingChanged: (loading) => setState(() => _isLoading = loading),
+                ),
+                const SizedBox(height: 16),
+                
+                // Quick sign up hint
+                Center(
+                  child: Text(
+                    'Or sign up quickly with Google or Facebook',
+                    style: TextStyle(
+                      color: AppColors.text.withValues(alpha: 0.6),
+                      fontSize: 12,
+                    ),
+                  ),
                 ),
               ],
             ),
           ),
         ),
       ),
+    );
+  }
+}
+
+class _TermsCheckbox extends StatelessWidget {
+  final bool value;
+  final void Function(bool?) onChanged;
+
+  const _TermsCheckbox({required this.value, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 24,
+          height: 24,
+          child: Checkbox(
+            value: value,
+            onChanged: onChanged,
+            activeColor: AppColors.primary,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Wrap(
+            children: [
+              const Text('I agree to the ', style: TextStyle(fontSize: 13)),
+              GestureDetector(
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const LegalScreen(type: LegalDocType.terms)),
+                ),
+                child: const Text('Terms of Service', style: TextStyle(fontSize: 13, color: AppColors.primary, fontWeight: FontWeight.bold)),
+              ),
+              const Text(' and ', style: TextStyle(fontSize: 13)),
+              GestureDetector(
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const LegalScreen(type: LegalDocType.privacy)),
+                ),
+                child: const Text('Privacy Policy', style: TextStyle(fontSize: 13, color: AppColors.primary, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

@@ -24,7 +24,8 @@ class _HabitTrackerScreenState extends ConsumerState<HabitTrackerScreen> {
   final TextEditingController _searchController = TextEditingController();
   final TextEditingController _newHabitController = TextEditingController();
   String _searchQuery = '';
-  bool _hasOpenedModal = false;
+  // ignore: unused_field
+  final bool _hasOpenedModal = false;
 
   @override
   void initState() {
@@ -68,7 +69,7 @@ class _HabitTrackerScreenState extends ConsumerState<HabitTrackerScreen> {
     );
   }
 
-  Widget _buildBody(user, DailyLog log) {
+  Widget _buildBody(dynamic user, DailyLog log) {
     final habitsList = _getHabitsList(user);
     final habitsMap = log.quests ?? {};
     final completedCount = habitsMap.values.where((v) => v == true).length;
@@ -118,7 +119,7 @@ class _HabitTrackerScreenState extends ConsumerState<HabitTrackerScreen> {
     );
   }
 
-  Widget _buildWeeklyQuestTable(user) {
+  Widget _buildWeeklyQuestTable(dynamic user) {
     final habitsList = _getHabitsList(user);
     if (habitsList.isEmpty) return const SizedBox();
 
@@ -218,13 +219,14 @@ class _HabitTrackerScreenState extends ConsumerState<HabitTrackerScreen> {
               );
             },
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (_, __) => const Text('Error loading weekly data'),
+            error: (_, st) => const Text('Error loading weekly data'),
           ),
         ),
       ],
     );
   }
 
+  // ignore: unused_element
   void _showPhotoCalorieModal(DailyLog log) {
     final ImagePicker picker = ImagePicker();
     XFile? selectedImage;
@@ -548,8 +550,6 @@ class _HabitTrackerScreenState extends ConsumerState<HabitTrackerScreen> {
     final todayLogAsync = ref.watch(todayLogProvider);
     return todayLogAsync.when(
       data: (log) {
-        final currentLog =
-            log ?? DailyLog(id: '', userId: '', date: DateTime.now());
         return Column(
           children: [
             Row(
@@ -633,11 +633,11 @@ class _HabitTrackerScreenState extends ConsumerState<HabitTrackerScreen> {
         );
       },
       loading: () => const SizedBox(),
-      error: (_, __) => const SizedBox(),
+      error: (_, st) => const SizedBox(),
     );
   }
 
-  Widget _buildHabitsList(user, DailyLog log) {
+  Widget _buildHabitsList(dynamic user, DailyLog log) {
     final habitsList = _getHabitsList(
       user,
     ).where((h) => h.toLowerCase().contains(_searchQuery)).toList();
@@ -728,10 +728,11 @@ class _HabitTrackerScreenState extends ConsumerState<HabitTrackerScreen> {
     );
   }
 
-  List<String> _getHabitsList(user) {
+  List<String> _getHabitsList(dynamic user) {
     if (user.habits is List) return List<String>.from(user.habits);
-    if (user.habits is Map)
+    if (user.habits is Map) {
       return (user.habits as Map).keys.cast<String>().toList();
+    }
     return [];
   }
 
@@ -758,9 +759,10 @@ class _HabitTrackerScreenState extends ConsumerState<HabitTrackerScreen> {
           ElevatedButton(
             onPressed: () async {
               if (_newHabitController.text.trim().isEmpty) return;
+              final nav = Navigator.of(context);
               await _addNewHabit(_newHabitController.text.trim());
               if (mounted) {
-                Navigator.pop(context);
+                nav.pop();
                 _newHabitController.clear();
               }
             },

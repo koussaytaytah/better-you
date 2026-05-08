@@ -70,9 +70,15 @@ final dailyLogsProvider = StreamProvider.family<List<DailyLog>, String>((ref, us
   return ref.watch(dailyLogRepositoryProvider).getUserDailyLogs(userId);
 });
 
-// Posts Provider
+// Posts Provider — automatically filters out posts from users I've blocked.
 final postsProvider = StreamProvider<List<Post>>((ref) {
-  return ref.watch(postRepositoryProvider).getPosts();
+  final me = ref.watch(currentUserProvider);
+  final blocked = me?.blockedUsers.toSet() ?? <String>{};
+  return ref.watch(postRepositoryProvider).getPosts().map(
+        (posts) => blocked.isEmpty
+            ? posts
+            : posts.where((p) => !blocked.contains(p.userId)).toList(),
+      );
 });
 
 // Messages Provider
@@ -155,11 +161,26 @@ final userPostsProvider = StreamProvider.family<List<Post>, String>((ref, userId
 final chatRoomsProvider = StreamProvider<List<Map<String, dynamic>>>((ref) {
   final user = ref.watch(currentUserProvider);
   if (user == null) return Stream.value([]);
-  return ref.watch(socialRepositoryProvider).getChatRooms(user.uid);
+  final blocked = user.blockedUsers.toSet();
+  return ref.watch(socialRepositoryProvider).getChatRooms(user.uid).map((rooms) {
+    if (blocked.isEmpty) return rooms;
+    return rooms.where((room) {
+      final participants = List<String>.from(room['participants'] ?? <String>[]);
+      // Hide 1-1 rooms where the other user is blocked. Group rooms stay visible.
+      final isGroup = room['isGroup'] == true;
+      if (isGroup) return true;
+      return !participants.any((p) => p != user.uid && blocked.contains(p));
+    }).toList();
+  });
 });
 
 final reportsProvider = StreamProvider<List<Map<String, dynamic>>>((ref) {
   return ref.watch(socialRepositoryProvider).getReports();
+});
+
+final unreadCountProvider = StreamProvider.family<int, (String, String)>((ref, params) {
+  final (roomId, userId) = params;
+  return ref.watch(socialRepositoryProvider).getUnreadCount(roomId, userId);
 });
 
 final allUsersAsyncProvider = StreamProvider<List<UserModel>>((ref) {
@@ -168,4 +189,22 @@ final allUsersAsyncProvider = StreamProvider<List<UserModel>>((ref) {
 
 final topUsersProvider = FutureProvider<List<UserModel>>((ref) async {
   return ref.read(userRepositoryProvider).getTopUsersByXP(limit: 50);
+});
+
+// User logs provider for nutrition dashboard
+final userLogsProvider = FutureProvider<List<DailyLog>>((ref) async {
+  final userAsync = ref.watch(currentUserAsyncProvider);
+  
+  return userAsync.when(
+    data: (user) async {
+      if (user == null) return [];
+      final repository = ref.read(dailyLogRepositoryProvider);
+      final logs = await repository.getUserDailyLogs(user.uid).first;
+      // Return last 30 days of logs
+      final thirtyDaysAgo = DateTime.now().subtract(const Duration(days: 30));
+      return logs.where((log) => log.date.isAfter(thirtyDaysAgo)).toList();
+    },
+    loading: () => [],
+    error: (_, st) => [],
+  );
 });

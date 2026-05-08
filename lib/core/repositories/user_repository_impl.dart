@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../shared/models/user_model.dart';
 import '../utils/logger.dart';
+import '../services/notification_service.dart';
+import '../services/sound_service.dart';
 import 'user_repository.dart';
 
 class UserRepositoryImpl implements UserRepository {
@@ -26,6 +28,9 @@ class UserRepositoryImpl implements UserRepository {
   @override
   Future<void> addXP(String userId, int amount) async {
     final userRef = _firestore.collection('users').doc(userId);
+    bool leveledUp = false;
+    int finalLevel = 1;
+
     await _firestore.runTransaction((transaction) async {
       final userDoc = await transaction.get(userRef);
       if (userDoc.exists) {
@@ -36,7 +41,6 @@ class UserRepositoryImpl implements UserRepository {
         int newXp = currentXp + amount;
         int newLevel = currentLevel;
 
-        bool leveledUp = false;
         while (newLevel < 100 && newXp >= newLevel * 1000) {
           newXp -= newLevel * 1000;
           newLevel++;
@@ -46,6 +50,7 @@ class UserRepositoryImpl implements UserRepository {
           newLevel = 100;
           if (newXp > 100000) newXp = 100000; // Cap display XP
         }
+        finalLevel = newLevel;
 
         transaction.update(userRef, {'xp': newXp, 'level': newLevel});
 
@@ -54,7 +59,7 @@ class UserRepositoryImpl implements UserRepository {
             'userId': userId,
             'toUserId': userId,
             'title': 'Level Up! 🎉',
-            'message': 'Congratulations! You reached level $newLevel!',
+            'message': 'Congratulations! You reached level $finalLevel!',
             'timestamp': FieldValue.serverTimestamp(),
             'isRead': false,
             'type': 'level_up',
@@ -62,6 +67,13 @@ class UserRepositoryImpl implements UserRepository {
         }
       }
     });
+
+    // Play feedback sound for the actor (best-effort; only fires for current user)
+    if (leveledUp) {
+      SoundService().play(AppSound.levelUp);
+    } else if (amount > 0) {
+      SoundService().play(AppSound.xpGained);
+    }
   }
 
   @override
@@ -250,7 +262,10 @@ class UserRepositoryImpl implements UserRepository {
     if (newBadges.isNotEmpty) {
       await userRef.update({'badges': FieldValue.arrayUnion(newBadges)});
 
+      final notificationService = NotificationService();
+
       for (var badge in newBadges) {
+        // Add to Firestore for in-app notification
         await _firestore.collection('notifications').add({
           'toUserId': userId,
           'fromUserId': 'system',
@@ -260,6 +275,12 @@ class UserRepositoryImpl implements UserRepository {
           'timestamp': FieldValue.serverTimestamp(),
           'isRead': false,
         });
+
+        // Show local push notification
+        await notificationService.showAchievementNotification(
+          title: 'Badge Unlocked! 🏆',
+          body: 'You earned the "$badge" badge! Keep up the great work!',
+        );
       }
     }
   }
@@ -308,6 +329,13 @@ class UserRepositoryImpl implements UserRepository {
       'timestamp': FieldValue.serverTimestamp(),
       'isRead': false,
     });
+
+    // Show local push notification
+    final notificationService = NotificationService();
+    await notificationService.showAchievementNotification(
+      title: 'New Badge Awarded! 🏆',
+      body: 'Admin awarded you the "$badgeName" badge!',
+    );
   }
 
   @override

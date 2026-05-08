@@ -1,17 +1,55 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    // Post Images
-    match /post_images/{imageId} {
-      // Anyone can see the posted images
+
+    function isAuth() { return request.auth != null; }
+    function isOwner(userId) { return isAuth() && request.auth.uid == userId; }
+    function isImage() { return request.resource.contentType.matches('image/.*'); }
+    function isAudio() { return request.resource.contentType.matches('audio/.*'); }
+    function under10MB() { return request.resource.size < 10 * 1024 * 1024; }
+    function under5MB()  { return request.resource.size < 5  * 1024 * 1024; }
+
+    // Profile pictures: anyone can view; only the owner can upload.
+    match /profile_pictures/{userId}/{file=**} {
       allow read: if true;
-      // Only authenticated users can upload new images
-      allow write: if request.auth != null;
+      allow write: if isOwner(userId) && isImage() && under5MB();
     }
-    
-    // Fallback rule for any other files
+
+    // Post images: public read, only authenticated users can upload.
+    match /post_images/{imageId} {
+      allow read: if true;
+      allow write: if isAuth() && isImage() && under10MB();
+    }
+
+    // Chat images: only members of the room can read; uploader must be auth'd.
+    // (Storage can't easily check chat-room membership, so we lock to auth + size + type.)
+    match /chat_images/{roomId}/{file=**} {
+      allow read: if isAuth();
+      allow write: if isAuth() && isImage() && under10MB();
+    }
+
+    // Voice messages
+    match /vocal_messages/{roomId}/{file=**} {
+      allow read: if isAuth();
+      allow write: if isAuth() && isAudio() && under10MB();
+    }
+
+    // Recipe images: public read, authenticated write
+    match /recipe_images/{file=**} {
+      allow read: if true;
+      allow write: if isAuth() && isImage() && under5MB();
+    }
+
+    // Doctor / coach credentials: only the user can upload, only doctors/admins can read
+    match /credentials/{userId}/{file=**} {
+      allow read: if isOwner(userId)
+        || (isAuth() && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role in ['admin']);
+      allow write: if isOwner(userId) && under10MB();
+    }
+
+    // Default: deny everything not explicitly covered.
     match /{allPaths=**} {
-      allow read, write: if request.auth != null;
+      allow read, write: if false;
     }
   }
 }

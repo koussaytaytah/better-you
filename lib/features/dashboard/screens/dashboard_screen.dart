@@ -7,7 +7,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_theme.dart';
 import '../../../shared/models/user_model.dart';
-import '../../../shared/models/daily_log_model.dart';
 import '../../../shared/providers/auth_provider.dart';
 import '../../../shared/providers/data_provider.dart';
 import '../../../shared/providers/theme_provider.dart';
@@ -22,9 +21,7 @@ import '../../../core/services/pedometer_service.dart';
 import '../widgets/metrics_grid.dart';
 import '../widgets/quick_actions_grid.dart';
 import '../widgets/ai_insight_card.dart';
-import '../../../shared/widgets/ai_pulse_button.dart';
-import 'ai_chatbot_screen.dart';
-
+import '../../../shared/widgets/shimmer_widgets.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -223,7 +220,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                       const AIInsightCard(),
                       const SizedBox(height: 32),
                       _buildDailyProgressCard(),
-                      const SizedBox(height: 80), // Padding for the floating navbar
+                      const SizedBox(height: 110), // Padding for the floating navbar
                     ],
                   ),
                 ),
@@ -232,7 +229,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
           ),
         );
       },
-      loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
+      loading: () => const Scaffold(body: ShimmerDashboardScreen()),
       error: (e, _) => Scaffold(body: Center(child: Text('Error: $e'))),
     );
   }

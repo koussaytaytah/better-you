@@ -15,7 +15,6 @@ import '../../../shared/providers/data_provider.dart';
 import '../../../shared/providers/auth_provider.dart';
 import '../../../core/services/ai_service.dart';
 import '../../chat/widgets/audio_message_bubble.dart';
-import '../../../shared/widgets/glass_card.dart';
 
 final aiServiceProvider = Provider((ref) => AIService());
 

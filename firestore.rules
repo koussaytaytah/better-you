@@ -39,26 +39,34 @@ service cloud.firestore {
       allow write: if isAuthenticated();
     }
 
-    // Chat rooms: Participants only
+    // Chat rooms: Participants only. Creator MUST be in the participants array.
     match /chat_rooms/{roomId} {
-      allow read, update: if isAuthenticated() && 
+      allow read, update, delete: if isAuthenticated() && 
         resource.data.participants.hasAny([request.auth.uid]);
-      allow create: if isAuthenticated();
+      allow create: if isAuthenticated() &&
+        request.resource.data.participants.hasAny([request.auth.uid]);
     }
 
-    // Messages: Must be a participant in the associated chat room
+    // Messages: must be a participant in the associated chat room.
+    // Updates only allowed for reactions / readBy fields (sender or participant).
     match /messages/{messageId} {
       allow create: if isAuthenticated() && 
+        request.resource.data.senderId == request.auth.uid &&
         get(/databases/$(database)/documents/chat_rooms/$(request.resource.data.roomId)).data.participants.hasAny([request.auth.uid]);
-      allow read: if isAuthenticated() && 
+      allow read, update: if isAuthenticated() && 
         get(/databases/$(database)/documents/chat_rooms/$(resource.data.roomId)).data.participants.hasAny([request.auth.uid]);
+      allow delete: if isAuthenticated() && resource.data.senderId == request.auth.uid;
     }
 
-    // Notifications: Only recipient can read/update
+    // Notifications: recipient can read/update. Authenticated users can create
+    // (level-up alerts, post likes, comments, badge awards write directly).
+    // Requires toUserId to be present to prevent malformed docs.
     match /notifications/{notificationId} {
-      allow read, update: if isAuthenticated() && 
+      allow read, update, delete: if isAuthenticated() && 
         (resource.data.toUserId == request.auth.uid || resource.data.userId == request.auth.uid);
-      allow create: if isAuthenticated();
+      allow create: if isAuthenticated() &&
+        request.resource.data.toUserId is string &&
+        request.resource.data.toUserId.size() > 0;
     }
 
     // Quests: Users can access their own
@@ -69,9 +77,107 @@ service cloud.firestore {
         request.auth.uid == request.resource.data.userId;
     }
 
-    // Default for everything else
+    // Recipes: Publicly readable. Authenticated users can create their own.
+    // Only the recipe author or an admin can update/delete.
+    match /recipes/{recipeId} {
+      allow read: if true;
+      allow create: if isAuthenticated() &&
+        request.resource.data.authorId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && (
+        resource.data.authorId == request.auth.uid ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+      );
+    }
+
+    // Meal Plans: Only owner can access
+    match /mealPlans/{planId} {
+      allow read, write: if isAuthenticated() && 
+        (resource == null || resource.data.userId == request.auth.uid);
+      allow create: if isAuthenticated() && 
+        request.auth.uid == request.resource.data.userId;
+    }
+
+    // Notification Settings: Only owner can access
+    match /notificationSettings/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    // Typing indicators (subcollection under chat_rooms)
+    match /chat_rooms/{roomId}/typing/{userId} {
+      allow read: if isAuthenticated() && 
+        get(/databases/$(database)/documents/chat_rooms/$(roomId)).data.participants.hasAny([request.auth.uid]);
+      allow write: if isOwner(userId);
+    }
+
+    // FCM Queue: Authenticated users can add, only backend reads
+    match /fcm_queue/{docId} {
+      allow create: if isAuthenticated();
+      allow read, update, delete: if false;
+    }
+
+    // Reports: Authenticated users can create, only admins can read
+    match /reports/{reportId} {
+      allow create: if isAuthenticated();
+      allow read, update: if isAuthenticated() && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Bookings: user or assigned coach can read; only the booking owner can create/cancel
+    match /bookings/{bookingId} {
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        resource.data.coachId == request.auth.uid
+      );
+      allow create: if isAuthenticated() &&
+        request.resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        resource.data.coachId == request.auth.uid
+      );
+      allow delete: if false;
+    }
+
+    // Subscriptions: only the owning user can read/write their subscription doc
+    match /subscriptions/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    // Workout plans: publicly readable, admin/seeder can write
+    match /workout_plans/{planId} {
+      allow read: if true;
+      allow create, update, delete: if isAuthenticated() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Nutrition tips: publicly readable, admin/seeder can write
+    match /nutrition_tips/{tipId} {
+      allow read: if true;
+      allow create, update, delete: if isAuthenticated() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // User sub-collections: daily logs (coach + doctor can read for their patients)
+    match /users/{userId}/daily_logs/{logId} {
+      allow read, write: if isOwner(userId) ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['coach', 'doctor', 'admin'];
+    }
+
+    // Prescriptions: patient (owner) can read & mark complete; coach/doctor can create/update.
+    match /users/{userId}/prescriptions/{prescriptionId} {
+      allow read, update: if isOwner(userId);
+      allow create, update: if isAuthenticated() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['coach', 'doctor'];
+    }
+
+    // Doctor notes — only doctors can read/write notes about a patient
+    match /doctor_notes/{noteId} {
+      allow read, create, update, delete: if isAuthenticated() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['doctor', 'admin'];
+    }
+
+    // Default: deny everything not explicitly covered
     match /{document=**} {
-      allow read, write: if isAuthenticated();
+      allow read, write: if false;
     }
   }
 }

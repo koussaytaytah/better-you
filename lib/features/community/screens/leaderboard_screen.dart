@@ -47,7 +47,7 @@ class LeaderboardScreen extends ConsumerWidget {
                   _buildPodium(context, podiumUsers),
                   Expanded(
                     child: ListView.builder(
-                      padding: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 100),
+                      padding: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 110),
                       itemExtent: 84,
                       itemCount: otherUsers.length,
                       itemBuilder: (context, index) {
