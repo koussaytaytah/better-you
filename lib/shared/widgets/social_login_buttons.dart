@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../core/services/social_auth_service.dart';
 import '../../core/utils/auth_error_handler.dart';
 import '../../shared/providers/auth_provider.dart';
+import '../theme/modern_theme.dart';
 
 class SocialLoginButtons extends ConsumerWidget {
   final bool isLoading;
@@ -17,6 +20,7 @@ class SocialLoginButtons extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final socialAuthService = SocialAuthService();
 
     Future<void> handleGoogleSignIn() async {
@@ -119,44 +123,69 @@ class SocialLoginButtons extends ConsumerWidget {
 
     return Column(
       children: [
-        // Divider with text
+        // Modern divider with text
         Row(
           children: [
-            Expanded(child: Divider(color: Colors.grey[300])),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Text(
-                'Or continue with',
-                style: TextStyle(color: Colors.grey[600], fontSize: 14),
+            Expanded(
+              child: Container(
+                height: 1,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.withValues(alpha: 0.2),
+                      isDark ? Colors.white.withValues(alpha: 0.2) : Colors.grey.withValues(alpha: 0.4),
+                    ],
+                  ),
+                ),
               ),
             ),
-            Expanded(child: Divider(color: Colors.grey[300])),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Text(
+                'Or continue with',
+                style: GoogleFonts.plusJakartaSans(
+                  color: isDark ? Colors.white.withValues(alpha: 0.5) : Colors.grey[600],
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            Expanded(
+              child: Container(
+                height: 1,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      isDark ? Colors.white.withValues(alpha: 0.2) : Colors.grey.withValues(alpha: 0.4),
+                      isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.withValues(alpha: 0.2),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 24),
         
-        // Social login buttons
+        // Modern social login buttons
         Row(
           children: [
             Expanded(
-              child: _SocialButton(
+              child: _ModernSocialButton(
                 icon: 'assets/icons/google.png',
                 fallbackIcon: Icons.g_mobiledata,
                 label: 'Google',
-                color: Colors.white,
-                textColor: Colors.black87,
-                borderColor: Colors.grey[300]!,
+                isGoogle: true,
                 onPressed: isLoading ? null : handleGoogleSignIn,
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 16),
             Expanded(
-              child: _SocialButton(
+              child: _ModernSocialButton(
                 icon: 'assets/icons/facebook.png',
                 fallbackIcon: Icons.facebook,
                 label: 'Facebook',
-                color: const Color(0xFF1877F2),
-                textColor: Colors.white,
+                isGoogle: false,
                 onPressed: isLoading ? null : handleFacebookSignIn,
               ),
             ),
@@ -185,61 +214,136 @@ class SocialLoginButtons extends ConsumerWidget {
   }
 }
 
-class _SocialButton extends StatelessWidget {
+class _ModernSocialButton extends StatefulWidget {
   final String? icon;
   final IconData fallbackIcon;
   final String label;
-  final Color color;
-  final Color textColor;
-  final Color? borderColor;
+  final bool isGoogle;
   final VoidCallback? onPressed;
 
-  const _SocialButton({
+  const _ModernSocialButton({
     this.icon,
     required this.fallbackIcon,
     required this.label,
-    required this.color,
-    required this.textColor,
-    this.borderColor,
+    required this.isGoogle,
     this.onPressed,
   });
 
   @override
+  State<_ModernSocialButton> createState() => _ModernSocialButtonState();
+}
+
+class _ModernSocialButtonState extends State<_ModernSocialButton>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: ModernTheme.microAnimationFast,
+      vsync: this,
+    );
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _handleTapDown(TapDownDetails details) {
+    if (widget.onPressed != null) {
+      _controller.forward();
+      HapticFeedback.lightImpact();
+    }
+  }
+
+  void _handleTapUp(TapUpDetails details) {
+    _controller.reverse();
+    widget.onPressed?.call();
+  }
+
+  void _handleTapCancel() {
+    _controller.reverse();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return ElevatedButton(
-      onPressed: onPressed,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: color,
-        foregroundColor: textColor,
-        elevation: 0,
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: borderColor != null 
-            ? BorderSide(color: borderColor!)
-            : BorderSide.none,
-        ),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    // Google colors
+    final googleBg = isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white;
+    final googleBorder = isDark ? Colors.white.withValues(alpha: 0.15) : Colors.grey.withValues(alpha: 0.3);
+    final googleText = isDark ? Colors.white : Colors.black87;
+    
+    // Facebook colors
+    final facebookBg = const Color(0xFF1877F2);
+    final facebookText = Colors.white;
+
+    final bgColor = widget.isGoogle ? googleBg : facebookBg;
+    final textColor = widget.isGoogle ? googleText : facebookText;
+    final borderColor = widget.isGoogle ? googleBorder : null;
+
+    Widget buttonContent = Container(
+      height: 52,
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(16),
+        border: borderColor != null
+            ? Border.all(color: borderColor, width: 1.5)
+            : null,
+        boxShadow: widget.onPressed != null
+            ? [
+                BoxShadow(
+                  color: (widget.isGoogle ? Colors.black : const Color(0xFF1877F2))
+                      .withValues(alpha: widget.isGoogle ? 0.05 : 0.25),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
+                ),
+              ]
+            : null,
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          icon != null
-            ? Image.asset(
-                icon!,
-                width: 24,
-                height: 24,
-                errorBuilder: (ctx, err, st) => Icon(fallbackIcon, size: 24),
-              )
-            : Icon(fallbackIcon, size: 24, color: textColor),
-          const SizedBox(width: 8),
+          widget.icon != null
+              ? Image.asset(
+                  widget.icon!,
+                  width: 22,
+                  height: 22,
+                  errorBuilder: (ctx, err, st) => Icon(widget.fallbackIcon, size: 22, color: textColor),
+                )
+              : Icon(widget.fallbackIcon, size: 22, color: textColor),
+          const SizedBox(width: 10),
           Text(
-            label,
-            style: TextStyle(
+            widget.label,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 15,
               fontWeight: FontWeight.w600,
               color: textColor,
             ),
           ),
         ],
+      ),
+    );
+
+    return GestureDetector(
+      onTapDown: _handleTapDown,
+      onTapUp: _handleTapUp,
+      onTapCancel: _handleTapCancel,
+      child: AnimatedBuilder(
+        animation: _scaleAnimation,
+        builder: (context, child) {
+          return Transform.scale(
+            scale: _scaleAnimation.value,
+            child: buttonContent,
+          );
+        },
       ),
     );
   }

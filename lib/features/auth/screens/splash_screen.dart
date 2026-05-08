@@ -1,11 +1,13 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_theme.dart';
 import '../../../shared/providers/auth_provider.dart';
+import '../../../shared/theme/modern_theme.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -21,7 +23,6 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    // Timeout fallback: if auth takes > 6 seconds, redirect to login
     _timeoutTimer = Timer(const Duration(seconds: 6), () {
       if (mounted && !_hasNavigated) {
         _navigate('/login');
@@ -50,9 +51,6 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
 
     authState.whenOrNull(
       data: (user) {
-        // GoRouter redirect will handle the actual destination
-        // We just need to leave the splash — go to dashboard root
-        // and let the router's redirect function decide where to go
         _navigate('/dashboard');
       },
       error: (e, _) {
@@ -65,60 +63,135 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
 
   Widget _buildSplash() {
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0F24),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 100,
-              height: 100,
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.15),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.health_and_safety_rounded,
-                size: 56,
-                color: AppColors.primary,
-              ),
-            )
-                .animate()
-                .scale(
-                    begin: const Offset(0.6, 0.6),
-                    duration: 600.ms,
-                    curve: Curves.easeOutBack)
-                .fadeIn(duration: 400.ms),
-            const SizedBox(height: 28),
-            Text(
-              'Better You',
-              style: GoogleFonts.poppins(
-                fontSize: 34,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-                letterSpacing: 1,
-              ),
-            ).animate().fadeIn(delay: 300.ms, duration: 500.ms),
-            const SizedBox(height: 8),
-            Text(
-              'Your Health, Bettered.',
-              style: GoogleFonts.poppins(
-                fontSize: 15,
-                color: Colors.white.withValues(alpha: 0.55),
-                letterSpacing: 1.2,
-              ),
-            ).animate().fadeIn(delay: 500.ms, duration: 500.ms),
-            const SizedBox(height: 64),
-            SizedBox(
-              width: 36,
-              height: 36,
-              child: CircularProgressIndicator(
-                strokeWidth: 2.5,
-                valueColor: AlwaysStoppedAnimation<Color>(
-                    AppColors.primary.withValues(alpha: 0.7)),
-              ),
-            ).animate().fadeIn(delay: 600.ms),
-          ],
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              const Color(0xFF00A86B),
+              const Color(0xFF00D68A),
+              const Color(0xFF00A86B).withValues(alpha: 0.8),
+            ],
+            stops: const [0.0, 0.5, 1.0],
+          ),
+        ),
+        child: SafeArea(
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Logo Container with Pulse Animation
+                Container(
+                  width: 120,
+                  height: 120,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.1),
+                        blurRadius: 40,
+                        spreadRadius: 10,
+                      ),
+                    ],
+                  ),
+                  child: Container(
+                    margin: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.15),
+                          blurRadius: 20,
+                          spreadRadius: 2,
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.health_and_safety_rounded,
+                      size: 56,
+                      color: Color(0xFF00A86B),
+                    ),
+                  ),
+                )
+                    .animate()
+                    .scale(begin: const Offset(0.5, 0.5), duration: 800.ms, curve: Curves.easeOutBack)
+                    .fadeIn(duration: 600.ms)
+                    .then(delay: 200.ms)
+                    .shake(duration: 400.ms, rotation: 0.05),
+                
+                const SizedBox(height: 40),
+                
+                // App Name
+                Text(
+                  'Better You',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 42,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                    letterSpacing: 1,
+                  ),
+                )
+                    .animate()
+                    .fadeIn(delay: 400.ms, duration: 600.ms)
+                    .slideY(begin: 0.3, curve: Curves.easeOutCubic),
+                
+                const SizedBox(height: 12),
+                
+                // Tagline
+                Text(
+                  'Your Health, Bettered.',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 16,
+                    color: Colors.white.withValues(alpha: 0.85),
+                    letterSpacing: 2,
+                    fontWeight: FontWeight.w500,
+                  ),
+                )
+                    .animate()
+                    .fadeIn(delay: 600.ms, duration: 500.ms),
+                
+                const SizedBox(height: 80),
+                
+                // Loading Indicator
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: SizedBox(
+                    width: 32,
+                    height: 32,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 3,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        Colors.white.withValues(alpha: 0.9),
+                      ),
+                    ),
+                  ),
+                )
+                    .animate()
+                    .fadeIn(delay: 800.ms)
+                    .scale(begin: const Offset(0.8, 0.8)),
+                
+                const SizedBox(height: 40),
+                
+                // Loading Text
+                Text(
+                  'Loading...',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 14,
+                    color: Colors.white.withValues(alpha: 0.7),
+                  ),
+                )
+                    .animate()
+                    .fadeIn(delay: 1000.ms),
+              ],
+            ),
+          ),
         ),
       ),
     );
