@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -10,16 +11,40 @@ class ProfessionalsDirectoryScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return DefaultTabController(
       length: 2,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Hire a Professional'),
-          bottom: const TabBar(
-            tabs: [
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          centerTitle: true,
+          title: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.7),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.white,
+                width: 1,
+              ),
+            ),
+            child: Text(
+              'Hire a Professional',
+              style: GoogleFonts.plusJakartaSans(
+                fontWeight: FontWeight.w800,
+                fontSize: 16,
+                color: isDark ? Colors.white : Colors.black87,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ),
+          bottom: TabBar(
+            tabs: const [
               Tab(text: 'Verified Coaches'),
               Tab(text: 'Verified Doctors'),
             ],
+            onTap: (_) => HapticFeedback.lightImpact(),
           ),
         ),
         body: Container(
@@ -126,7 +151,10 @@ class _ProfessionalsList extends ConsumerWidget {
                         backgroundColor: isAlreadyHired ? Colors.grey : AppColors.primary,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
-                      onPressed: isAlreadyHired ? null : () => _hireProfessional(context, ref, currentUser.uid, proId, role),
+                      onPressed: isAlreadyHired ? null : () {
+                        HapticFeedback.mediumImpact();
+                        _hireProfessional(context, ref, currentUser.uid, proId, role);
+                      },
                       child: Text(isAlreadyHired ? 'Hired' : 'Hire', style: const TextStyle(color: Colors.white)),
                     ),
                   ],
@@ -140,6 +168,7 @@ class _ProfessionalsList extends ConsumerWidget {
   }
 
   void _hireProfessional(BuildContext context, WidgetRef ref, String userId, String proId, String role) async {
+    HapticFeedback.heavyImpact();
     try {
       await FirebaseFirestore.instance.collection('users').doc(userId).update({
         'assignedProfessionals': FieldValue.arrayUnion([proId]),

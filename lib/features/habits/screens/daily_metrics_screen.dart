@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:record/record.dart';
@@ -33,6 +34,7 @@ class _DailyMetricsScreenState extends ConsumerState<DailyMetricsScreen> {
   }
 
   Future<void> _startRecording() async {
+    HapticFeedback.lightImpact();
     try {
       if (await _audioRecorder.hasPermission()) {
         final dir = await getTemporaryDirectory();
@@ -50,6 +52,7 @@ class _DailyMetricsScreenState extends ConsumerState<DailyMetricsScreen> {
   }
 
   Future<void> _stopRecording() async {
+    HapticFeedback.mediumImpact();
     try {
       final path = await _audioRecorder.stop();
       setState(() => _isRecording = false);
@@ -79,6 +82,7 @@ class _DailyMetricsScreenState extends ConsumerState<DailyMetricsScreen> {
   }
 
   Future<void> _submitLog() async {
+    HapticFeedback.lightImpact();
     final text = _textController.text.trim();
     if (text.isEmpty) return;
 
@@ -180,9 +184,30 @@ class _DailyMetricsScreenState extends ConsumerState<DailyMetricsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          'Life Metrics',
-          style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+        centerTitle: true,
+        title: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Colors.white.withValues(alpha: 0.05)
+                : Colors.white.withValues(alpha: 0.7),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? Colors.white.withValues(alpha: 0.1)
+                  : Colors.white,
+              width: 1,
+            ),
+          ),
+          child: Text(
+            'Life Metrics',
+            style: GoogleFonts.plusJakartaSans(
+              fontWeight: FontWeight.w800,
+              fontSize: 16,
+              color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black87,
+              letterSpacing: 0.5,
+            ),
+          ),
         ),
         elevation: 0,
         backgroundColor: Colors.transparent,
@@ -207,8 +232,14 @@ class _DailyMetricsScreenState extends ConsumerState<DailyMetricsScreen> {
                       color: Colors.blue,
                       value: '${currentLog.waterGlasses ?? 0}',
                       unit: 'Glasses',
-                      onAdd: () => _incrementMetric('waterGlasses', currentLog.waterGlasses ?? 0, 1),
-                      onSub: () => _incrementMetric('waterGlasses', currentLog.waterGlasses ?? 0, -1),
+                      onAdd: () {
+                        HapticFeedback.lightImpact();
+                        _incrementMetric('waterGlasses', currentLog.waterGlasses ?? 0, 1);
+                      },
+                      onSub: () {
+                        HapticFeedback.lightImpact();
+                        _incrementMetric('waterGlasses', currentLog.waterGlasses ?? 0, -1);
+                      },
                     ),
                     _buildMetricCard(
                       title: 'Steps',
@@ -216,8 +247,14 @@ class _DailyMetricsScreenState extends ConsumerState<DailyMetricsScreen> {
                       color: Colors.green,
                       value: '${currentLog.steps ?? 0}',
                       unit: 'Steps',
-                      onAdd: () => _incrementMetric('steps', currentLog.steps ?? 0, 1000),
-                      onSub: () => _incrementMetric('steps', currentLog.steps ?? 0, -1000),
+                      onAdd: () {
+                        HapticFeedback.lightImpact();
+                        _incrementMetric('steps', currentLog.steps ?? 0, 1000);
+                      },
+                      onSub: () {
+                        HapticFeedback.lightImpact();
+                        _incrementMetric('steps', currentLog.steps ?? 0, -1000);
+                      },
                     ),
                     _buildMetricCard(
                       title: 'Sleep',
@@ -225,8 +262,14 @@ class _DailyMetricsScreenState extends ConsumerState<DailyMetricsScreen> {
                       color: Colors.indigo,
                       value: '${currentLog.sleepHours ?? 0.0}',
                       unit: 'Hours',
-                      onAdd: () => _incrementMetric('sleepHours', currentLog.sleepHours ?? 0.0, 0.5),
-                      onSub: () => _incrementMetric('sleepHours', currentLog.sleepHours ?? 0.0, -0.5),
+                      onAdd: () {
+                        HapticFeedback.lightImpact();
+                        _incrementMetric('sleepHours', currentLog.sleepHours ?? 0.0, 0.5);
+                      },
+                      onSub: () {
+                        HapticFeedback.lightImpact();
+                        _incrementMetric('sleepHours', currentLog.sleepHours ?? 0.0, -0.5);
+                      },
                     ),
                     _buildMetricCard(
                       title: 'Exercise',
@@ -234,8 +277,14 @@ class _DailyMetricsScreenState extends ConsumerState<DailyMetricsScreen> {
                       color: Colors.orange,
                       value: '${currentLog.exerciseMinutes ?? 0}',
                       unit: 'Minutes',
-                      onAdd: () => _incrementMetric('exerciseMinutes', currentLog.exerciseMinutes ?? 0, 10),
-                      onSub: () => _incrementMetric('exerciseMinutes', currentLog.exerciseMinutes ?? 0, -10),
+                      onAdd: () {
+                        HapticFeedback.lightImpact();
+                        _incrementMetric('exerciseMinutes', currentLog.exerciseMinutes ?? 0, 10);
+                      },
+                      onSub: () {
+                        HapticFeedback.lightImpact();
+                        _incrementMetric('exerciseMinutes', currentLog.exerciseMinutes ?? 0, -10);
+                      },
                     ),
                     const Divider(height: 48),
                     Text('Vices Tracking', style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
@@ -246,8 +295,14 @@ class _DailyMetricsScreenState extends ConsumerState<DailyMetricsScreen> {
                       color: Colors.grey.shade700,
                       value: '${currentLog.cigarettes ?? 0}',
                       unit: 'Cigs',
-                      onAdd: () => _incrementMetric('cigarettes', currentLog.cigarettes ?? 0, 1),
-                      onSub: () => _incrementMetric('cigarettes', currentLog.cigarettes ?? 0, -1),
+                      onAdd: () {
+                        HapticFeedback.lightImpact();
+                        _incrementMetric('cigarettes', currentLog.cigarettes ?? 0, 1);
+                      },
+                      onSub: () {
+                        HapticFeedback.lightImpact();
+                        _incrementMetric('cigarettes', currentLog.cigarettes ?? 0, -1);
+                      },
                     ),
                     _buildMetricCard(
                       title: 'Alcohol',
@@ -255,8 +310,14 @@ class _DailyMetricsScreenState extends ConsumerState<DailyMetricsScreen> {
                       color: Colors.purple,
                       value: '${currentLog.alcohol ?? 0}',
                       unit: 'Units',
-                      onAdd: () => _incrementMetric('alcohol', currentLog.alcohol ?? 0, 1),
-                      onSub: () => _incrementMetric('alcohol', currentLog.alcohol ?? 0, -1),
+                      onAdd: () {
+                        HapticFeedback.lightImpact();
+                        _incrementMetric('alcohol', currentLog.alcohol ?? 0, 1);
+                      },
+                      onSub: () {
+                        HapticFeedback.lightImpact();
+                        _incrementMetric('alcohol', currentLog.alcohol ?? 0, -1);
+                      },
                     ),
                   ],
                 ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -63,6 +64,7 @@ class _BMICalculatorScreenState extends ConsumerState<BMICalculatorScreen> {
   bool _isSaving = false;
 
   void _calculate() {
+    HapticFeedback.lightImpact();
     final double? weight = double.tryParse(_weightController.text);
     final double? height = double.tryParse(_heightController.text);
     final int? age = int.tryParse(_ageController.text);
@@ -104,6 +106,7 @@ class _BMICalculatorScreenState extends ConsumerState<BMICalculatorScreen> {
   }
 
   Future<void> _saveToProfile() async {
+    HapticFeedback.mediumImpact();
     final user = ref.read(currentUserProvider);
     if (user == null) return;
 
@@ -155,12 +158,32 @@ class _BMICalculatorScreenState extends ConsumerState<BMICalculatorScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: Text(
-          'BMI & Calorie Calculator',
-          style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: true,
+        title: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.7),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.white,
+              width: 1,
+            ),
+          ),
+          child: Text(
+            'BMI Calculator',
+            style: GoogleFonts.plusJakartaSans(
+              fontWeight: FontWeight.w800,
+              fontSize: 16,
+              color: isDark ? Colors.white : Colors.black87,
+              letterSpacing: 0.5,
+            ),
+          ),
         ),
       ),
       body: SingleChildScrollView(
@@ -261,6 +284,7 @@ class _BMICalculatorScreenState extends ConsumerState<BMICalculatorScreen> {
                               )
                               .toList(),
                           onChanged: (val) {
+                            HapticFeedback.lightImpact();
                             if (val != null) setState(() => _gender = val);
                           },
                         ),
@@ -362,6 +386,7 @@ class _BMICalculatorScreenState extends ConsumerState<BMICalculatorScreen> {
                   .map((e) => DropdownMenuItem(value: e, child: Text(e)))
                   .toList(),
               onChanged: (val) {
+                HapticFeedback.lightImpact();
                 if (val != null) setState(() => _activityLevel = val);
               },
             ),

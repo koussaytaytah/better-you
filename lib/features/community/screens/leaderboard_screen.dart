@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -15,17 +16,34 @@ class LeaderboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final topUsersAsync = ref.watch(topUsersProvider);
     final currentUser = ref.watch(currentUserProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: Text(
-          'Champions Leaderboard',
-          style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
-        ),
-        centerTitle: true,
-        elevation: 0,
         backgroundColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: true,
+        title: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.7),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.white,
+              width: 1,
+            ),
+          ),
+          child: Text(
+            'Champions Leaderboard',
+            style: GoogleFonts.plusJakartaSans(
+              fontWeight: FontWeight.w800,
+              fontSize: 16,
+              color: isDark ? Colors.white : Colors.black87,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ),
       ),
       body: topUsersAsync.when(
         data: (users) {
@@ -54,7 +72,8 @@ class LeaderboardScreen extends ConsumerWidget {
                         final user = otherUsers[index];
                         final rank = index + 4;
                         final isMe = currentUser?.uid == user.uid;
-                        return _buildLeaderboardTile(context, user, rank, isMe);
+                        return _buildLeaderboardTile(context, user, rank, isMe)
+                            .animate().fadeIn(delay: (index * 50).ms).slideX(begin: 0.1);
                       },
                     ),
                   ),
@@ -254,7 +273,8 @@ class LeaderboardScreen extends ConsumerWidget {
       ),
       child: ListTile(
         onTap: () {
-           if (!isMe) Navigator.push(context, MaterialPageRoute(builder: (_) => UserProfileScreen(userId: user.uid)));
+          HapticFeedback.lightImpact();
+          if (!isMe) Navigator.push(context, MaterialPageRoute(builder: (_) => UserProfileScreen(userId: user.uid)));
         },
         leading: SizedBox(
           width: 40,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_theme.dart';
@@ -31,6 +32,7 @@ class _BookSessionScreenState extends State<BookSessionScreen> {
   double get _price => (widget.coachData['pricePerSession'] as num?)?.toDouble() ?? 0;
 
   Future<void> _confirmBooking() async {
+    HapticFeedback.heavyImpact();
     if (_selectedSlot == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please select an available time slot')),
@@ -106,6 +108,7 @@ class _BookSessionScreenState extends State<BookSessionScreen> {
               width: double.infinity,
               child: FilledButton(
                 onPressed: () {
+                  HapticFeedback.mediumImpact();
                   Navigator.of(ctx).pop();
                   Navigator.of(context).pushReplacement(
                     MaterialPageRoute(builder: (_) => MySessionsScreen(userId: widget.userId)),
@@ -118,6 +121,7 @@ class _BookSessionScreenState extends State<BookSessionScreen> {
             const SizedBox(height: 12),
             TextButton(
               onPressed: () {
+                HapticFeedback.lightImpact();
                 Navigator.of(ctx).pop();
                 Navigator.of(context).pop();
                 Navigator.of(context).pop();
@@ -142,10 +146,32 @@ class _BookSessionScreenState extends State<BookSessionScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       appBar: AppBar(
-        title: Text('Book Session', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         centerTitle: true,
+        title: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.7),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.white,
+              width: 1,
+            ),
+          ),
+          child: Text(
+            'Book Session',
+            style: GoogleFonts.plusJakartaSans(
+              fontWeight: FontWeight.w800,
+              fontSize: 16,
+              color: isDark ? Colors.white : Colors.black87,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
@@ -158,18 +184,30 @@ class _BookSessionScreenState extends State<BookSessionScreen> {
             const SizedBox(height: 12),
             Row(
               children: [
-                _TypeChip(label: 'Video Call', icon: Icons.videocam_outlined, value: 'video', selected: _selectedType, onTap: (v) => setState(() => _selectedType = v)),
+                _TypeChip(label: 'Video Call', icon: Icons.videocam_outlined, value: 'video', selected: _selectedType, onTap: (v) {
+                  HapticFeedback.lightImpact();
+                  setState(() => _selectedType = v);
+                }),
                 const SizedBox(width: 12),
-                _TypeChip(label: 'Voice Call', icon: Icons.call_outlined, value: 'voice', selected: _selectedType, onTap: (v) => setState(() => _selectedType = v)),
+                _TypeChip(label: 'Voice Call', icon: Icons.call_outlined, value: 'voice', selected: _selectedType, onTap: (v) {
+                  HapticFeedback.lightImpact();
+                  setState(() => _selectedType = v);
+                }),
                 const SizedBox(width: 12),
-                _TypeChip(label: 'Chat', icon: Icons.chat_bubble_outline, value: 'chat', selected: _selectedType, onTap: (v) => setState(() => _selectedType = v)),
+                _TypeChip(label: 'Chat', icon: Icons.chat_bubble_outline, value: 'chat', selected: _selectedType, onTap: (v) {
+                  HapticFeedback.lightImpact();
+                  setState(() => _selectedType = v);
+                }),
               ],
             ),
             const SizedBox(height: 24),
             Text('Select Date', style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16)),
             const SizedBox(height: 12),
             InkWell(
-              onTap: _pickDate,
+              onTap: () {
+                HapticFeedback.lightImpact();
+                _pickDate();
+              },
               borderRadius: BorderRadius.circular(14),
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -204,7 +242,10 @@ class _BookSessionScreenState extends State<BookSessionScreen> {
                 children: _slots.map((slot) {
                   final isSelected = _selectedSlot == slot;
                   return GestureDetector(
-                    onTap: () => setState(() => _selectedSlot = slot),
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      setState(() => _selectedSlot = slot);
+                    },
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),

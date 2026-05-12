@@ -153,9 +153,28 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: Text(
-          'Edit Profile',
-          style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: true,
+        title: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.7),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.white,
+              width: 1,
+            ),
+          ),
+          child: Text(
+            'Edit Profile',
+            style: GoogleFonts.plusJakartaSans(
+              fontWeight: FontWeight.w800,
+              fontSize: 16,
+              color: isDark ? Colors.white : Colors.black87,
+              letterSpacing: 0.5,
+            ),
+          ),
         ),
         actions: [
           TextButton(

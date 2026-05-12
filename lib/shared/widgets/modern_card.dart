@@ -34,7 +34,6 @@ class _ModernCardState extends State<ModernCard>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
-  bool _isHovered = false;
 
   @override
   void initState() {

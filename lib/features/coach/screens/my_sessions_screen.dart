@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_theme.dart';
@@ -10,18 +11,41 @@ class MySessionsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return DefaultTabController(
       length: 3,
       child: Scaffold(
         appBar: AppBar(
-          title: Text('My Sessions', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
           centerTitle: true,
-          bottom: const TabBar(
-            tabs: [
+          title: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.7),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.white,
+                width: 1,
+              ),
+            ),
+            child: Text(
+              'My Sessions',
+              style: GoogleFonts.plusJakartaSans(
+                fontWeight: FontWeight.w800,
+                fontSize: 16,
+                color: isDark ? Colors.white : Colors.black87,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ),
+          bottom: TabBar(
+            tabs: const [
               Tab(text: 'Upcoming'),
               Tab(text: 'Completed'),
               Tab(text: 'Cancelled'),
             ],
+            onTap: (_) => HapticFeedback.lightImpact(),
           ),
         ),
         body: TabBarView(
@@ -195,7 +219,10 @@ class _SessionCard extends StatelessWidget {
                 children: [
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: () => _cancelBooking(context),
+                      onPressed: () {
+                        HapticFeedback.mediumImpact();
+                        _cancelBooking(context);
+                      },
                       icon: const Icon(Icons.cancel_outlined, size: 16),
                       label: const Text('Cancel'),
                       style: OutlinedButton.styleFrom(foregroundColor: Colors.red, side: const BorderSide(color: Colors.red)),
@@ -204,7 +231,9 @@ class _SessionCard extends StatelessWidget {
                   const SizedBox(width: 10),
                   Expanded(
                     child: FilledButton.icon(
-                      onPressed: () {},
+                      onPressed: () {
+                        HapticFeedback.lightImpact();
+                      },
                       icon: const Icon(Icons.message_outlined, size: 16),
                       label: const Text('Message'),
                       style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
@@ -218,7 +247,10 @@ class _SessionCard extends StatelessWidget {
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
-                  onPressed: () => _showReviewDialog(context),
+                  onPressed: () {
+                    HapticFeedback.lightImpact();
+                    _showReviewDialog(context);
+                  },
                   icon: const Icon(Icons.star_outline, size: 16),
                   label: const Text('Leave a Review'),
                 ),
@@ -237,8 +269,14 @@ class _SessionCard extends StatelessWidget {
         title: const Text('Cancel Session?'),
         content: const Text('Are you sure you want to cancel this session?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Keep it')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Yes, cancel', style: TextStyle(color: Colors.red))),
+          TextButton(onPressed: () {
+            HapticFeedback.lightImpact();
+            Navigator.pop(ctx, false);
+          }, child: const Text('Keep it')),
+          TextButton(onPressed: () {
+            HapticFeedback.heavyImpact();
+            Navigator.pop(ctx, true);
+          }, child: const Text('Yes, cancel', style: TextStyle(color: Colors.red))),
         ],
       ),
     );
@@ -265,7 +303,10 @@ class _SessionCard extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: List.generate(5, (i) => IconButton(
                   icon: Icon(Icons.star, color: i < rating ? Colors.amber : Colors.grey[300]),
-                  onPressed: () => setDialogState(() => rating = i + 1),
+                  onPressed: () {
+                    HapticFeedback.lightImpact();
+                    setDialogState(() => rating = i + 1);
+                  },
                 )),
               ),
               const SizedBox(height: 12),
@@ -277,9 +318,13 @@ class _SessionCard extends StatelessWidget {
             ],
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            TextButton(onPressed: () {
+              HapticFeedback.lightImpact();
+              Navigator.pop(ctx);
+            }, child: const Text('Cancel')),
             FilledButton(
               onPressed: () async {
+                HapticFeedback.mediumImpact();
                 await FirebaseFirestore.instance.collection('bookings').doc(bookingId).update({
                   'review': {'rating': rating, 'comment': controller.text.trim()},
                 });

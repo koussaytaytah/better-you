@@ -184,10 +184,29 @@ class _AppLimitsScreenState extends ConsumerState<AppLimitsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Doom-Scroll Blocker', style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
+        title: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: Theme.of(context).brightness == Brightness.dark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.7),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: Theme.of(context).brightness == Brightness.dark ? Colors.white.withValues(alpha: 0.1) : Colors.white,
+              width: 1,
+            ),
+          ),
+          child: Text(
+            'Doom-Scroll Blocker',
+            style: GoogleFonts.plusJakartaSans(
+              fontWeight: FontWeight.w800,
+              fontSize: 16,
+              color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black87,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())

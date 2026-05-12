@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../../../core/constants/app_theme.dart';
 import '../../../shared/models/daily_log_model.dart';
 import '../../../shared/providers/data_provider.dart';
@@ -18,6 +20,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final todayLogAsync = ref.watch(todayLogProvider);
     final logsAsync = ref.watch(userLogsProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       body: CustomScrollView(
@@ -53,23 +56,23 @@ class NutritionDashboardScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildQuickActions(context),
-                const Divider(height: 32),
+                _buildQuickActions(context, isDark: isDark).animate().fadeIn().slideY(),
+                const SizedBox(height: 32),
                 todayLogAsync.when(
-                  data: (log) => _buildTodaySummary(context, log),
+                  data: (log) => _buildTodaySummary(context, log, isDark: isDark).animate().fadeIn().slideY(delay: 100.ms),
                   loading: () => const SliverToBoxAdapter(child: Center(child: CircularProgressIndicator())),
                   error: (error, _) => SliverToBoxAdapter(child: Center(child: Text('Error: $error'))),
                 ),
                 const SizedBox(height: 24),
                 logsAsync.when(
-                  data: (logs) => _buildWeeklyChart(context, logs),
+                  data: (logs) => _buildWeeklyChart(context, logs, isDark: isDark).animate().fadeIn().slideY(delay: 200.ms),
                   loading: () => const Center(child: CircularProgressIndicator()),
                   error: (error, _) => Center(child: Text('Error: $error')),
                 ),
                 const SizedBox(height: 24),
-                _buildMacroDistribution(),
+                _buildMacroDistribution().animate().fadeIn().slideY(delay: 300.ms),
                 const SizedBox(height: 24),
-                _buildInsightsCard(),
+                _buildInsightsCard(isDark: isDark).animate().fadeIn().slideY(delay: 400.ms),
                 const SizedBox(height: 32),
               ],
             ),
@@ -79,7 +82,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildQuickActions(BuildContext context) {
+  Widget _buildQuickActions(BuildContext context, {required bool isDark}) {
     return Container(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -100,10 +103,13 @@ class NutritionDashboardScreen extends ConsumerWidget {
                   icon: Icons.camera_alt,
                   title: 'Scan Food',
                   color: Colors.orange,
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const EnhancedFoodDetectionScreen()),
-                  ),
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const EnhancedFoodDetectionScreen()),
+                    );
+                  },
                 ),
               ),
               const SizedBox(width: 12),
@@ -112,10 +118,13 @@ class NutritionDashboardScreen extends ConsumerWidget {
                   icon: Icons.search,
                   title: 'Food DB',
                   color: Colors.teal,
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const FoodSearchScreen()),
-                  ),
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const FoodSearchScreen()),
+                    );
+                  },
                 ),
               ),
             ],
@@ -128,10 +137,13 @@ class NutritionDashboardScreen extends ConsumerWidget {
                   icon: Icons.restaurant_menu,
                   title: 'Recipes',
                   color: Colors.green,
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const RecipesScreen()),
-                  ),
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const RecipesScreen()),
+                    );
+                  },
                 ),
               ),
               const SizedBox(width: 12),
@@ -140,10 +152,13 @@ class NutritionDashboardScreen extends ConsumerWidget {
                   icon: Icons.calendar_today,
                   title: 'Meal Plan',
                   color: Colors.blue,
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const MealPlanningScreen()),
-                  ),
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const MealPlanningScreen()),
+                    );
+                  },
                 ),
               ),
             ],
@@ -153,13 +168,13 @@ class NutritionDashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildTodaySummary(BuildContext context, DailyLog? log) {
-    final calories = log?.calories ?? 0;
+  Widget _buildTodaySummary(BuildContext context, DailyLog? log, {required bool isDark}) {
+    final calories = (log?.calories ?? 0).toDouble();
     final protein = log?.protein ?? 0.0;
     final carbs = log?.carbs ?? 0.0;
     final fat = log?.fat ?? 0.0;
 
-    final targetCalories = 2000;
+    final targetCalories = 2000.0;
     final targetProtein = 150.0;
     final targetCarbs = 250.0;
     final targetFat = 70.0;
@@ -172,7 +187,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: isDark ? Colors.transparent : Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -208,19 +223,19 @@ class NutritionDashboardScreen extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 20),
-          _buildProgressBar('Calories', calories, targetCalories, Colors.orange, 'kcal'),
+          _buildProgressBar('Calories', calories, targetCalories, Colors.orange, 'kcal', isDark: isDark),
           const SizedBox(height: 16),
-          _buildProgressBar('Protein', protein, targetProtein, Colors.blue, 'g'),
+          _buildProgressBar('Protein', protein, targetProtein, Colors.blue, 'g', isDark: isDark),
           const SizedBox(height: 16),
-          _buildProgressBar('Carbs', carbs, targetCarbs, Colors.green, 'g'),
+          _buildProgressBar('Carbs', carbs, targetCarbs, Colors.green, 'g', isDark: isDark),
           const SizedBox(height: 16),
-          _buildProgressBar('Fat', fat, targetFat, Colors.red, 'g'),
+          _buildProgressBar('Fat', fat, targetFat, Colors.red, 'g', isDark: isDark),
         ],
       ),
     );
   }
 
-  Widget _buildProgressBar(String label, num value, num target, Color color, String unit) {
+  Widget _buildProgressBar(String label, double value, double target, Color color, String unit, {required bool isDark}) {
     final progress = (value / target).clamp(0.0, 1.0);
     final percentage = ((value / target) * 100).round();
 
@@ -241,7 +256,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
               '$value / $target $unit ($percentage%)',
               style: TextStyle(
                 fontSize: 13,
-                color: Colors.grey[600],
+                color: isDark ? AppColors.darkTextLight : Colors.grey[600],
               ),
             ),
           ],
@@ -252,7 +267,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
           child: LinearProgressIndicator(
             value: progress,
             minHeight: 8,
-            backgroundColor: Colors.grey[200],
+            backgroundColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey[200],
             valueColor: AlwaysStoppedAnimation(color),
           ),
         ),
@@ -260,7 +275,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildWeeklyChart(BuildContext context, List<DailyLog> logs) {
+  Widget _buildWeeklyChart(BuildContext context, List<DailyLog> logs, {required bool isDark}) {
     final now = DateTime.now();
     final last7Days = List.generate(7, (i) => now.subtract(Duration(days: 6 - i)));
     
@@ -291,7 +306,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: isDark ? Colors.transparent : Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -338,7 +353,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
                               DateFormat.E().format(date).substring(0, 3),
                               style: TextStyle(
                                 fontSize: 11,
-                                color: Colors.grey[600],
+                                color: isDark ? AppColors.darkTextLight : Colors.grey[600],
                               ),
                             ),
                           );
@@ -505,7 +520,7 @@ class NutritionDashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildInsightsCard() {
+  Widget _buildInsightsCard({required bool isDark}) {
     final insights = [
       ('🔥', 'You\'re on a 5-day logging streak!', Colors.orange),
       ('💪', 'Protein goal reached yesterday!', Colors.blue),
@@ -516,9 +531,9 @@ class NutritionDashboardScreen extends ConsumerWidget {
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.grey[50],
+        color: isDark ? AppColors.darkSurface : Colors.grey[50],
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey[200]!),
+        border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.grey[200]!),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

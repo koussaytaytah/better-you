@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:table_calendar/table_calendar.dart';
@@ -33,6 +34,7 @@ class _ProgressCalendarScreenState
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(currentUserProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     if (user == null) {
       return const Scaffold(body: Center(child: Text('Please login')));
     }
@@ -43,11 +45,27 @@ class _ProgressCalendarScreenState
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: Text(
-          'Health Calendar',
-          style: GoogleFonts.poppins(
-            fontWeight: FontWeight.bold,
-            color: Theme.of(context).colorScheme.onSurface,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: true,
+        title: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.7),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.white,
+              width: 1,
+            ),
+          ),
+          child: Text(
+            'Health Calendar',
+            style: GoogleFonts.plusJakartaSans(
+              fontWeight: FontWeight.w800,
+              fontSize: 16,
+              color: isDark ? Colors.white : Colors.black87,
+              letterSpacing: 0.5,
+            ),
           ),
         ),
       ),
@@ -126,12 +144,14 @@ class _ProgressCalendarScreenState
         selectedDayPredicate: (day) =>
             _selectedDay != null && isSameDay(_selectedDay!, day),
         onDaySelected: (selectedDay, focusedDay) {
+          HapticFeedback.lightImpact();
           setState(() {
             _selectedDay = selectedDay;
             _focusedDay = focusedDay;
           });
         },
         onFormatChanged: (format) {
+          HapticFeedback.lightImpact();
           setState(() {
             _calendarFormat = format;
           });

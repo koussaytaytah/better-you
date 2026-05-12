@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -50,6 +51,7 @@ class _NewChatScreenState extends ConsumerState<NewChatScreen> {
   }
 
   Future<void> _create(UserModel currentUser) async {
+    HapticFeedback.mediumImpact();
     if (_selected.isEmpty) return;
     setState(() => _creating = true);
     try {
@@ -103,14 +105,33 @@ class _NewChatScreenState extends ConsumerState<NewChatScreen> {
     }
 
     final isGroup = _selected.length > 1;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_selected.isEmpty
-            ? 'New Chat'
-            : '${_selected.length} selected'),
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: true,
+        title: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.7),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.white,
+              width: 1,
+            ),
+          ),
+          child: Text(
+            _selected.isEmpty ? 'New Chat' : '${_selected.length} selected',
+            style: GoogleFonts.plusJakartaSans(
+              fontWeight: FontWeight.w800,
+              fontSize: 16,
+              color: isDark ? Colors.white : Colors.black87,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ),
       ),
       body: Column(
         children: [
@@ -166,7 +187,10 @@ class _NewChatScreenState extends ConsumerState<NewChatScreen> {
                         Positioned(
                           top: -4, right: -4,
                           child: GestureDetector(
-                            onTap: () => setState(() => _selected.remove(u.uid)),
+                            onTap: () {
+                              HapticFeedback.lightImpact();
+                              setState(() => _selected.remove(u.uid));
+                            },
                             child: const CircleAvatar(
                               radius: 10,
                               backgroundColor: Colors.red,
@@ -230,6 +254,7 @@ class _NewChatScreenState extends ConsumerState<NewChatScreen> {
                     return CheckboxListTile(
                       value: selected,
                       onChanged: (v) {
+                        HapticFeedback.lightImpact();
                         setState(() {
                           if (v == true) {
                             _selected[f.uid] = f;

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -38,39 +39,39 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen> {
           return CustomScrollView(
             slivers: [
               _buildAppBar(),
-              SliverToBoxAdapter(child: _buildPeriodToggle()),
+              SliverToBoxAdapter(child: _buildPeriodToggle().animate().fadeIn().slideY()),
               if (logs.isEmpty)
                 SliverFillRemaining(child: _buildEmptyState())
               else ...[
-                SliverToBoxAdapter(child: _buildHealthScoreCard(logs)),
-                SliverToBoxAdapter(child: _buildStreakRow(logs)),
-                SliverToBoxAdapter(child: _buildAveragesCard(logs, habits)),
-                SliverToBoxAdapter(child: _buildSectionTitle('Activity')),
+                SliverToBoxAdapter(child: _buildHealthScoreCard(logs).animate().fadeIn(delay: 50.ms).slideY(begin: 0.1)),
+                SliverToBoxAdapter(child: _buildStreakRow(logs).animate().fadeIn(delay: 100.ms).slideY(begin: 0.1)),
+                SliverToBoxAdapter(child: _buildAveragesCard(logs, habits).animate().fadeIn(delay: 150.ms).slideY(begin: 0.1)),
+                SliverToBoxAdapter(child: _buildSectionTitle('Activity').animate().fadeIn(delay: 200.ms).slideX(begin: -0.1)),
                 SliverToBoxAdapter(child: _buildChartCard(
                   title: 'Steps', subtitle: 'Daily step count', icon: Icons.directions_walk, color: Colors.orange,
                   chart: _buildLineChart(logs, (l) => (l.steps ?? 0).toDouble(), Colors.orange, 10000),
-                )),
+                ).animate().fadeIn(delay: 250.ms).slideY(begin: 0.1)),
                 SliverToBoxAdapter(child: _buildChartCard(
                   title: 'Exercise', subtitle: 'Minutes active', icon: Icons.fitness_center, color: AppColors.success,
                   chart: _buildBarChart(logs, (l) => (l.exerciseMinutes ?? 0).toDouble(), AppColors.success),
-                )),
-                SliverToBoxAdapter(child: _buildSectionTitle('Nutrition')),
+                ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.1)),
+                SliverToBoxAdapter(child: _buildSectionTitle('Nutrition').animate().fadeIn(delay: 350.ms).slideX(begin: -0.1)),
                 SliverToBoxAdapter(child: _buildChartCard(
                   title: 'Calories', subtitle: 'kcal per day', icon: Icons.local_fire_department, color: AppColors.accent,
                   chart: _buildLineChart(logs, (l) => (l.calories ?? 0).toDouble(), AppColors.accent,
                       (habits['targetCalories'] ?? 2000).toDouble()),
-                )),
-                SliverToBoxAdapter(child: _buildMacroPieCard(logs)),
+                ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.1)),
+                SliverToBoxAdapter(child: _buildMacroPieCard(logs).animate().fadeIn(delay: 450.ms).slideY(begin: 0.1)),
                 SliverToBoxAdapter(child: _buildChartCard(
                   title: 'Water', subtitle: 'Glasses per day', icon: Icons.water_drop, color: const Color(0xFF2563EB),
                   chart: _buildLineChart(logs, (l) => (l.waterGlasses ?? 0).toDouble(), const Color(0xFF2563EB), 8),
-                )),
-                SliverToBoxAdapter(child: _buildSectionTitle('Wellness')),
+                ).animate().fadeIn(delay: 500.ms).slideY(begin: 0.1)),
+                SliverToBoxAdapter(child: _buildSectionTitle('Wellness').animate().fadeIn(delay: 550.ms).slideX(begin: -0.1)),
                 SliverToBoxAdapter(child: _buildChartCard(
                   title: 'Sleep', subtitle: 'Hours per night', icon: Icons.bedtime, color: Colors.indigo,
                   chart: _buildLineChart(logs, (l) => (l.sleepHours ?? 0).toDouble(), Colors.indigo, 8),
-                )),
-                SliverToBoxAdapter(child: _buildMoodChart(logs)),
+                ).animate().fadeIn(delay: 600.ms).slideY(begin: 0.1)),
+                SliverToBoxAdapter(child: _buildMoodChart(logs).animate().fadeIn(delay: 650.ms).slideY(begin: 0.1)),
                 SliverToBoxAdapter(child: _buildChartCard(
                   title: 'Habit Completion', subtitle: '% of daily quests done', icon: Icons.task_alt, color: AppColors.primary,
                   chart: _buildBarChart(logs, (l) {
@@ -78,16 +79,16 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen> {
                     if (q.isEmpty) return 0.0;
                     return (q.values.where((v) => v).length / q.length * 100);
                   }, AppColors.primary, maxY: 100),
-                )),
-                SliverToBoxAdapter(child: _buildSectionTitle('Health Risks')),
+                ).animate().fadeIn(delay: 700.ms).slideY(begin: 0.1)),
+                SliverToBoxAdapter(child: _buildSectionTitle('Health Risks').animate().fadeIn(delay: 750.ms).slideX(begin: -0.1)),
                 SliverToBoxAdapter(child: _buildChartCard(
                   title: 'Cigarettes', subtitle: 'Smoked per day', icon: Icons.smoking_rooms, color: AppColors.danger,
                   chart: _buildBarChart(logs, (l) => (l.cigarettes ?? 0).toDouble(), AppColors.danger),
-                )),
+                ).animate().fadeIn(delay: 800.ms).slideY(begin: 0.1)),
                 SliverToBoxAdapter(child: _buildChartCard(
                   title: 'Alcohol', subtitle: 'Units per day', icon: Icons.local_bar, color: AppColors.warning,
                   chart: _buildBarChart(logs, (l) => (l.alcohol ?? 0).toDouble(), AppColors.warning),
-                )),
+                ).animate().fadeIn(delay: 850.ms).slideY(begin: 0.1)),
                 const SliverToBoxAdapter(child: SizedBox(height: 40)),
               ],
             ],
@@ -151,7 +152,10 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen> {
             for (final days in [7, 30, 90])
               Expanded(
                 child: GestureDetector(
-                  onTap: () => setState(() => _periodDays = days),
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    setState(() => _periodDays = days);
+                  },
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
                     margin: const EdgeInsets.all(4),

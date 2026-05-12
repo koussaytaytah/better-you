@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
@@ -29,6 +30,7 @@ class _GlobalChatScreenState extends ConsumerState<GlobalChatScreen> {
   }
 
   Future<void> _sendMessage() async {
+    HapticFeedback.lightImpact();
     final text = _messageController.text.trim();
     if (text.isEmpty || _isSending) return;
 
@@ -122,9 +124,26 @@ class _GlobalChatScreenState extends ConsumerState<GlobalChatScreen> {
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
-          title: Text(
-            'Global Chat',
-            style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+          centerTitle: true,
+          title: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.7),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.white,
+                width: 1,
+              ),
+            ),
+            child: Text(
+              'Global Chat',
+              style: GoogleFonts.plusJakartaSans(
+                fontWeight: FontWeight.w800,
+                fontSize: 16,
+                color: isDark ? Colors.white : Colors.black87,
+                letterSpacing: 0.5,
+              ),
+            ),
           ),
         ),
         body: Column(
@@ -186,8 +205,10 @@ class _GlobalChatScreenState extends ConsumerState<GlobalChatScreen> {
                           style: TextStyle(color: Colors.grey[500])),
                       const SizedBox(height: 12),
                       ElevatedButton(
-                        onPressed: () =>
-                            ref.invalidate(messagesProvider('global')),
+                        onPressed: () {
+                          HapticFeedback.mediumImpact();
+                          ref.invalidate(messagesProvider('global'));
+                        },
                         child: const Text('Retry'),
                       ),
                     ],
@@ -377,6 +398,7 @@ class _GlobalChatScreenState extends ConsumerState<GlobalChatScreen> {
               : IconButton(
                   onPressed: _sendMessage,
                   icon: const Icon(Icons.send_rounded, color: AppColors.primary),
+                  splashRadius: 24,
                 ),
         ],
       ),

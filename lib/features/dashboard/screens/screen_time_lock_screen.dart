@@ -1,5 +1,6 @@
 ﻿import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../core/constants/app_theme.dart';
@@ -142,6 +143,7 @@ class _ScreenTimeLockScreenState extends State<ScreenTimeLockScreen> {
                         onPressed: _secondsRemaining > 0
                             ? null
                             : () {
+                                HapticFeedback.heavyImpact();
                                 setState(() => _questCompleted = true);
                               },
                         style: ElevatedButton.styleFrom(
@@ -171,7 +173,10 @@ class _ScreenTimeLockScreenState extends State<ScreenTimeLockScreen> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: () => widget.onUnlock(15),
+                        onPressed: () {
+                          HapticFeedback.mediumImpact();
+                          widget.onUnlock(15);
+                        },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.green,
                           foregroundColor: Colors.white,

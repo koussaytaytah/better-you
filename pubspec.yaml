@@ -70,9 +70,9 @@ dependencies:
   # UUID
   uuid: ^4.5.0
 
-  # App Usage (Android only)
-  usage_stats: ^1.1.0
-  installed_apps: ^1.1.2
+  # App Usage (Android only) - Screen Time DISABLED (package incompatible with SDK 36)
+  # usage_stats: ^1.2.0
+  installed_apps: ^1.6.0
   android_intent_plus: ^5.0.2
   flutter_background_service: ^5.0.11
   flutter_background_service_android: ^6.1.1

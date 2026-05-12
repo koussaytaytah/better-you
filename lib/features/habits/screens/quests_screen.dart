@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -31,6 +32,7 @@ class _QuestsScreenState extends ConsumerState<QuestsScreen> {
   Future<void> _addQuest() async {
     if (_questController.text.trim().isEmpty) return;
 
+    HapticFeedback.lightImpact();
     final user = ref.read(currentUserProvider);
     if (user == null) return;
 
@@ -52,6 +54,7 @@ class _QuestsScreenState extends ConsumerState<QuestsScreen> {
     DailyLog? todayLog,
     bool isCoachSuggested,
   ) async {
+    HapticFeedback.lightImpact();
     final user = ref.read(currentUserProvider);
     if (user == null) return;
 
@@ -65,8 +68,9 @@ class _QuestsScreenState extends ConsumerState<QuestsScreen> {
       DateTime.now(),
       {'quests': updatedQuests},
     );
-    
+
     if (completed == true) {
+      HapticFeedback.mediumImpact();
       // Award Double XP for Coach-Suggested Quests
       final xpAmount = isCoachSuggested ? 100 : 50;
       await ref.read(userRepositoryProvider).addXP(user.uid, xpAmount);
@@ -86,9 +90,34 @@ class _QuestsScreenState extends ConsumerState<QuestsScreen> {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: Text(
-          'My Quests',
-          style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: true,
+        title: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Colors.white.withValues(alpha: 0.05)
+                : Colors.white.withValues(alpha: 0.7),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? Colors.white.withValues(alpha: 0.1)
+                  : Colors.white,
+              width: 1,
+            ),
+          ),
+          child: Text(
+            'My Quests',
+            style: GoogleFonts.plusJakartaSans(
+              fontWeight: FontWeight.w800,
+              fontSize: 16,
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? Colors.white
+                  : AppColors.text,
+              letterSpacing: 0.5,
+            ),
+          ),
         ),
       ),
       body: ResponsiveWrapper(

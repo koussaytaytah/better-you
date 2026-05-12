@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -112,57 +113,75 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         if (user == null) return const SizedBox();
         _checkLevelUp(user);
 
-        return Scaffold(
-          backgroundColor: Theme.of(context).colorScheme.surface,
+          return Scaffold(
+          backgroundColor: isDark ? const Color(0xFF0D0D0D) : AppColors.background,
+          extendBodyBehindAppBar: true,
           appBar: AppBar(
-            backgroundColor: Theme.of(context).colorScheme.surface,
+            backgroundColor: Colors.transparent,
             elevation: 0,
             centerTitle: true,
-            title: Text(
-              'Better You',
-              style: GoogleFonts.poppins(
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.onSurface,
+            title: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.7),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.white,
+                  width: 1,
+                ),
+              ),
+              child: Text(
+                'Better You',
+                style: GoogleFonts.plusJakartaSans(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 16,
+                  color: Theme.of(context).colorScheme.onSurface,
+                  letterSpacing: 0.5,
+                ),
               ),
             ),
             actions: [
-              IconButton(
-                icon: Icon(
-                  Icons.mail_outline,
-                  color: Theme.of(context).colorScheme.onSurface,
-                ),
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const MessagesInboxScreen()),
-                ),
+              _buildAppBarButton(
+                icon: Icons.mail_outline,
+                onPressed: () {
+                  HapticFeedback.lightImpact();
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const MessagesInboxScreen()),
+                  );
+                },
+                isDark: isDark,
               ),
-              IconButton(
-                icon: Icon(
-                  Icons.settings_outlined,
-                  color: Theme.of(context).colorScheme.onSurface,
-                ),
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const SettingsScreen()),
-                ),
+              _buildAppBarButton(
+                icon: Icons.settings_outlined,
+                onPressed: () {
+                  HapticFeedback.lightImpact();
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                  );
+                },
+                isDark: isDark,
               ),
-              IconButton(
-                icon: Icon(
-                  Icons.person_outline,
-                  color: Theme.of(context).colorScheme.onSurface,
-                ),
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const ProfileScreen()),
-                ),
+              _buildAppBarButton(
+                icon: Icons.person_outline,
+                onPressed: () {
+                  HapticFeedback.lightImpact();
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                  );
+                },
+                isDark: isDark,
+                showBadge: true,
               ),
               if (user.role == UserRole.admin)
-                 IconButton(
-                  icon: Icon(
-                    Icons.admin_panel_settings,
-                    color: Theme.of(context).colorScheme.onSurface,
-                  ),
-                  onPressed: () => context.push('/admin'),
+                _buildAppBarButton(
+                  icon: Icons.admin_panel_settings,
+                  onPressed: () {
+                    HapticFeedback.lightImpact();
+                    context.push('/admin');
+                  },
+                  isDark: isDark,
                 ),
               const SizedBox(width: 8),
-
             ],
           ),
           body: Container(
@@ -194,9 +213,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                       const SizedBox(height: 16),
                       _buildHeroHeader(user, isDark, todayLogAsync.value != null),
                       const SizedBox(height: 32),
-                      _buildRecentMessages(),
+                      _buildRecentMessages(isDark: isDark),
                       const SizedBox(height: 24),
-                      _buildConnectedFriends(user),
+                      if (user.friends.isNotEmpty) _buildConnectedFriends(user, isDark: isDark),
                       const SizedBox(height: 32),
                       Text(
                         'Quick Actions',
@@ -219,7 +238,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                       const SizedBox(height: 32),
                       const AIInsightCard(),
                       const SizedBox(height: 32),
-                      _buildDailyProgressCard(),
+                      _buildDailyProgressCard(isDark: isDark),
                       const SizedBox(height: 110), // Padding for the floating navbar
                     ],
                   ),
@@ -234,7 +253,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     );
   }
 
-  Widget _buildRecentMessages() {
+  Widget _buildRecentMessages({required bool isDark}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -265,7 +284,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
             borderRadius: BorderRadius.circular(24),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.03),
+                color: isDark ? Colors.transparent : Colors.black.withValues(alpha: 0.03),
                 blurRadius: 10,
               ),
             ],
@@ -285,10 +304,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                 ),
                 child: Row(
                   children: [
-                    const CircleAvatar(
+                    CircleAvatar(
                       radius: 20,
                       backgroundColor: AppColors.primary,
-                      child: Icon(Icons.person, color: Colors.white, size: 20),
+                      child: Icon(Icons.person, color: isDark ? AppColors.darkText : Colors.white, size: 20),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -326,7 +345,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     );
   }
 
-  Widget _buildConnectedFriends(UserModel user) {
+  Widget _buildConnectedFriends(UserModel user, {required bool isDark}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -360,10 +379,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                           height: 56,
                           width: 56,
                           decoration: BoxDecoration(
-                            color: Colors.grey.withValues(alpha: 0.1),
+                            color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.withValues(alpha: 0.1),
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(Icons.add, color: Colors.grey),
+                          child: Icon(Icons.add, color: isDark ? AppColors.darkTextLight : Colors.grey),
                         ),
                         const SizedBox(height: 4),
                         const Text('Add', style: TextStyle(fontSize: 10)),
@@ -472,7 +491,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
       width: double.infinity,
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1A1A1A) : Colors.white,
+        color: isDark ? AppColors.darkSurface : Colors.white,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
           color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.05),
@@ -480,7 +499,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         ),
         boxShadow: isDark ? [] : [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: isDark ? Colors.transparent : Colors.black.withValues(alpha: 0.04),
             blurRadius: 12,
             offset: const Offset(0, 4),
           )
@@ -504,7 +523,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
-                            color: isDark ? Colors.grey[500] : Colors.grey[600],
+                            color: isDark ? AppColors.darkTextLight : Colors.grey[600],
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -539,7 +558,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                         fontSize: 32,
                         fontWeight: FontWeight.w800,
                         letterSpacing: -1.2,
-                        color: isDark ? Colors.white : Colors.black,
+                        color: isDark ? AppColors.darkText : Colors.black,
                       ),
                     ),
                   ],
@@ -592,7 +611,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                           fontWeight: FontWeight.w800,
                           fontSize: 24,
                           letterSpacing: -0.5,
-                          color: isDark ? Colors.white : Colors.black,
+                          color: isDark ? AppColors.darkText : Colors.black,
                         ),
                       );
                     },
@@ -680,7 +699,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     );
   }
 
-  Widget _buildDailyProgressCard() {
+  Widget _buildDailyProgressCard({required bool isDark}) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
@@ -707,7 +726,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
             bottom: -8,
             child: Icon(
               Icons.auto_awesome,
-              color: Colors.white.withValues(alpha: 0.1),
+              color: isDark ? AppColors.darkText : Colors.white.withValues(alpha: 0.1),
               size: 64,
             ),
           ),
@@ -721,7 +740,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                     Text(
                       'Daily Progress',
                       style: GoogleFonts.poppins(
-                        color: Colors.white,
+                        color: isDark ? AppColors.darkText : Colors.white,
                         fontWeight: FontWeight.bold,
                         fontSize: 22,
                         letterSpacing: -0.5,
@@ -731,7 +750,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                     Text(
                       'You\'re doing great! Keep up the\nhealthy habits.',
                       style: GoogleFonts.poppins(
-                        color: Colors.white.withValues(alpha: 0.9),
+                        color: isDark ? AppColors.darkText : Colors.white.withValues(alpha: 0.9),
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
                       ),
@@ -743,18 +762,69 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
+                  color: isDark ? AppColors.darkText : Colors.white.withValues(alpha: 0.2),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.auto_awesome,
-                  color: Colors.white,
+                  color: isDark ? AppColors.darkText : Colors.white,
                   size: 28,
                 ),
               ),
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildAppBarButton({
+    required IconData icon,
+    required VoidCallback onPressed,
+    required bool isDark,
+    bool showBadge = false,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(right: 8),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(14),
+          child: Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.7),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.white,
+                width: 1,
+              ),
+            ),
+            child: Stack(
+              children: [
+                Icon(
+                  icon,
+                  color: isDark ? AppColors.darkText : AppColors.text,
+                  size: 22,
+                ),
+                if (showBadge)
+                  Positioned(
+                    right: 0,
+                    top: 0,
+                    child: Container(
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(
+                        color: AppColors.accent,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

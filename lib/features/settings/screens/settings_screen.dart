@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:better_you/l10n/app_localizations.dart';
 import '../../../shared/providers/auth_provider.dart';
 import '../../../shared/providers/language_provider.dart';
@@ -26,13 +28,24 @@ class SettingsScreen extends ConsumerWidget {
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
-        title: Text(
-          l10n.settings,
-          style: GoogleFonts.poppins(
-            fontWeight: FontWeight.bold,
-            color: Theme.of(context).brightness == Brightness.light
-                ? Colors.black87
-                : Colors.white,
+        title: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.7),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.white,
+              width: 1,
+            ),
+          ),
+          child: Text(
+            l10n.settings,
+            style: GoogleFonts.plusJakartaSans(
+              fontWeight: FontWeight.w800,
+              fontSize: 16,
+              color: isDark ? Colors.white : Colors.black87,
+              letterSpacing: 0.5,
+            ),
           ),
         ),
       ),
@@ -57,7 +70,7 @@ class SettingsScreen extends ConsumerWidget {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 100, 16, 16),
           children: [
-            _buildSectionHeader(l10n.appearance),
+            _buildSectionHeader(l10n.appearance).animate().fadeIn().slideX(begin: -0.1),
             _buildSettingTile(
               context: context,
               title: l10n.darkMode,
@@ -69,7 +82,7 @@ class SettingsScreen extends ConsumerWidget {
                     ref.read(themeModeProvider.notifier).toggleTheme(val),
                 activeThumbColor: AppColors.primary,
               ),
-            ),
+            ).animate().fadeIn(delay: 50.ms).slideX(begin: -0.1),
             _buildSettingTile(
               context: context,
               title: 'Simple Mode',
@@ -81,18 +94,19 @@ class SettingsScreen extends ConsumerWidget {
                     ref.read(simpleModeProvider.notifier).toggleSimpleMode(val),
                 activeThumbColor: AppColors.primary,
               ),
-            ),
+            ).animate().fadeIn(delay: 100.ms).slideX(begin: -0.1),
             _buildSettingTile(
               context: context,
               title: 'Doom-Scroll Blocker',
               subtitle: 'Lock social apps until you finish quests',
               icon: Icons.shield,
               onTap: () {
+                HapticFeedback.lightImpact();
                 Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AppLimitsScreen()));
               },
-            ),
+            ).animate().fadeIn(delay: 150.ms).slideX(begin: -0.1),
             const SizedBox(height: 24),
-            _buildSectionHeader(l10n.language),
+            _buildSectionHeader(l10n.language).animate().fadeIn(delay: 200.ms).slideX(begin: -0.1),
             _buildSettingTile(
               context: context,
               title: l10n.currentLanguage,
@@ -102,40 +116,51 @@ class SettingsScreen extends ConsumerWidget {
                   ? l10n.arabic
                   : 'Français',
               icon: Icons.language,
-              onTap: () =>
-                  _showLanguagePicker(context, ref, currentLocale, l10n),
-            ),
+              onTap: () {
+                HapticFeedback.lightImpact();
+                _showLanguagePicker(context, ref, currentLocale, l10n);
+              },
+            ).animate().fadeIn(delay: 250.ms).slideX(begin: -0.1),
             const SizedBox(height: 24),
-            _buildSectionHeader(l10n.about),
+            _buildSectionHeader(l10n.about).animate().fadeIn(delay: 300.ms).slideX(begin: -0.1),
             _buildSettingTile(
               context: context,
               title: l10n.appVersion,
               subtitle: '1.0.0',
               icon: Icons.info_outline,
-            ),
+            ).animate().fadeIn(delay: 350.ms).slideX(begin: -0.1),
             _buildSettingTile(
               context: context,
               title: 'Terms of Service',
               subtitle: 'Read our terms and conditions',
               icon: Icons.gavel_outlined,
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const LegalScreen(type: LegalDocType.terms)),
-              ),
-            ),
+              onTap: () {
+                HapticFeedback.lightImpact();
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const LegalScreen(type: LegalDocType.terms)),
+                );
+              },
+            ).animate().fadeIn(delay: 400.ms).slideX(begin: -0.1),
             _buildSettingTile(
               context: context,
               title: 'Privacy Policy',
               subtitle: 'How we handle your data',
               icon: Icons.privacy_tip_outlined,
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const LegalScreen(type: LegalDocType.privacy)),
-              ),
-            ),
+              onTap: () {
+                HapticFeedback.lightImpact();
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const LegalScreen(type: LegalDocType.privacy)),
+                );
+              },
+            ).animate().fadeIn(delay: 450.ms).slideX(begin: -0.1),
             const SizedBox(height: 32),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: ElevatedButton(
-                onPressed: () => ref.read(authServiceProvider).signOut(),
+                onPressed: () {
+                  HapticFeedback.mediumImpact();
+                  ref.read(authServiceProvider).signOut();
+                },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.red.withValues(alpha: 0.1),
                   foregroundColor: Colors.red,
@@ -150,7 +175,7 @@ class SettingsScreen extends ConsumerWidget {
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                 ),
               ),
-            ),
+            ).animate().fadeIn(delay: 500.ms).slideY(begin: 0.2),
           ],
         ),
       ),
@@ -186,7 +211,7 @@ class SettingsScreen extends ConsumerWidget {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
+            color: Theme.of(context).brightness == Brightness.dark ? Colors.transparent : Colors.black.withValues(alpha: 0.03),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -209,7 +234,7 @@ class SettingsScreen extends ConsumerWidget {
         ),
         subtitle: Text(
           subtitle,
-          style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey),
+          style: GoogleFonts.poppins(fontSize: 12, color: Theme.of(context).brightness == Brightness.dark ? AppColors.darkTextLight : Colors.grey),
         ),
         trailing:
             trailing ??
@@ -217,13 +242,15 @@ class SettingsScreen extends ConsumerWidget {
                 ? Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: Colors.grey.withValues(alpha: 0.1),
+                      color: Theme.of(context).brightness == Brightness.dark 
+                          ? Colors.white.withValues(alpha: 0.05)
+                          : Colors.grey.withValues(alpha: 0.1),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.arrow_forward_ios_rounded,
                       size: 12,
-                      color: Colors.grey,
+                      color: Theme.of(context).brightness == Brightness.dark ? AppColors.darkTextLight : Colors.grey,
                     ),
                   )
                 : null),

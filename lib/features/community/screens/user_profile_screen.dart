@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_theme.dart';
@@ -23,12 +24,35 @@ class UserProfileScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text('User Profile'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: true,
+        title: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.7),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.white,
+              width: 1,
+            ),
+          ),
+          child: Text(
+            'User Profile',
+            style: GoogleFonts.plusJakartaSans(
+              fontWeight: FontWeight.w800,
+              fontSize: 16,
+              color: isDark ? Colors.white : Colors.black87,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ),
         actions: [
           if (currentUser != null && currentUser.uid != userId)
             PopupMenuButton<String>(
               icon: const Icon(Icons.more_vert),
               onSelected: (value) {
+                HapticFeedback.lightImpact();
                 if (value == 'report') {
                   _showReportDialog(context, ref, currentUser.uid, userId);
                 } else if (value == 'block') {
@@ -172,6 +196,7 @@ class UserProfileScreen extends ConsumerWidget {
                   if (!isFriend && !hasSentRequest)
                     ElevatedButton.icon(
                       onPressed: () async {
+                        HapticFeedback.mediumImpact();
                         if (currentUser != null) {
                           try {
                             // Update other user's friendRequests
@@ -231,6 +256,7 @@ class UserProfileScreen extends ConsumerWidget {
                       currentUser?.role == UserRole.coach)
                     ElevatedButton.icon(
                       onPressed: () {
+                        HapticFeedback.lightImpact();
                         if (user.role == UserRole.doctor ||
                             user.role == UserRole.coach) {
                           if (currentUser != null && !currentUser.isPremium) {
@@ -354,12 +380,15 @@ class UserProfileScreen extends ConsumerWidget {
               itemBuilder: (context, index) {
                 final post = posts[index];
                 return GestureDetector(
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => PostDetailScreen(postId: post.id),
-                    ),
-                  ),
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => PostDetailScreen(postId: post.id),
+                      ),
+                    );
+                  },
                   child: Container(
                     margin: const EdgeInsets.only(bottom: 12),
                     padding: const EdgeInsets.all(12),

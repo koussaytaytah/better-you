@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_theme.dart';
@@ -24,16 +25,39 @@ class GroupQuestsScreen extends ConsumerWidget {
     final groupQuestsAsync = ref.watch(groupQuestsProvider);
     final currentUser = ref.watch(currentUserProvider);
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          'Group Quests',
-          style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: true,
+        title: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.7),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.white,
+              width: 1,
+            ),
+          ),
+          child: Text(
+            'Group Quests',
+            style: GoogleFonts.plusJakartaSans(
+              fontWeight: FontWeight.w800,
+              fontSize: 16,
+              color: isDark ? Colors.white : Colors.black87,
+              letterSpacing: 0.5,
+            ),
+          ),
         ),
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
-            onPressed: () => _showCreateGroupQuestDialog(context, ref),
+            onPressed: () {
+              HapticFeedback.mediumImpact();
+              _showCreateGroupQuestDialog(context, ref);
+            },
           ),
         ],
       ),
@@ -156,12 +180,15 @@ class GroupQuestsScreen extends ConsumerWidget {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: () => _handleJoinLeaveQuest(
-                          context,
-                          ref,
-                          quest,
-                          isJoined,
-                        ),
+                        onPressed: () {
+                          HapticFeedback.mediumImpact();
+                          _handleJoinLeaveQuest(
+                            context,
+                            ref,
+                            quest,
+                            isJoined,
+                          );
+                        },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: isJoined
                               ? Colors.grey
@@ -222,7 +249,10 @@ class GroupQuestsScreen extends ConsumerWidget {
                       ),
                     )
                     .toList(),
-                onChanged: (val) => category = val!,
+                onChanged: (val) {
+                  HapticFeedback.lightImpact();
+                  category = val!;
+                },
                 decoration: const InputDecoration(labelText: 'Category'),
               ),
             ],
@@ -230,11 +260,15 @@ class GroupQuestsScreen extends ConsumerWidget {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () {
+              HapticFeedback.lightImpact();
+              Navigator.pop(context);
+            },
             child: const Text('Cancel'),
           ),
           ElevatedButton(
             onPressed: () async {
+              HapticFeedback.heavyImpact();
               final user = ref.read(currentUserProvider);
               if (user != null && titleController.text.isNotEmpty) {
                 final newQuest = GroupQuest(

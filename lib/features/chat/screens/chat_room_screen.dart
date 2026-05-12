@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 import 'package:record/record.dart';
@@ -103,6 +104,7 @@ class _ChatRoomScreenState extends ConsumerState<ChatRoomScreen> {
   }
 
   Future<void> _startRecording() async {
+    HapticFeedback.lightImpact();
     try {
       if (await Permission.microphone.request().isGranted) {
         final directory = await getTemporaryDirectory();
@@ -117,6 +119,7 @@ class _ChatRoomScreenState extends ConsumerState<ChatRoomScreen> {
   }
 
   Future<void> _stopRecording() async {
+    HapticFeedback.mediumImpact();
     try {
       final path = await _audioRecorder.stop();
       setState(() => _isRecording = false);
@@ -176,7 +179,7 @@ class _ChatRoomScreenState extends ConsumerState<ChatRoomScreen> {
     _messageController.clear();
     setState(() => _replyToMessage = null);
     SoundService().play(AppSound.messageSent);
-    Haptic.tap();
+    HapticFeedback.lightImpact();
 
     _notifyOtherParticipants(user.uid, user.name, message.message);
   }
@@ -200,6 +203,7 @@ class _ChatRoomScreenState extends ConsumerState<ChatRoomScreen> {
               leading: const Icon(Icons.camera_alt, color: AppColors.primary),
               title: Text('Take photo', style: GoogleFonts.inter()),
               onTap: () async {
+                HapticFeedback.lightImpact();
                 final f = await picker.pickImage(source: ImageSource.camera, imageQuality: 75, maxWidth: 1600);
                 if (ctx.mounted) Navigator.pop(ctx, f);
               },
@@ -208,6 +212,7 @@ class _ChatRoomScreenState extends ConsumerState<ChatRoomScreen> {
               leading: const Icon(Icons.photo_library, color: AppColors.primary),
               title: Text('Choose from gallery', style: GoogleFonts.inter()),
               onTap: () async {
+                HapticFeedback.lightImpact();
                 final f = await picker.pickImage(source: ImageSource.gallery, imageQuality: 75, maxWidth: 1600);
                 if (ctx.mounted) Navigator.pop(ctx, f);
               },
@@ -307,7 +312,7 @@ class _ChatRoomScreenState extends ConsumerState<ChatRoomScreen> {
     final typingUsers = typingUsersAsync.value ?? [];
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: isDark ? AppColors.darkBackground : AppColors.background,
       appBar: AppBar(
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
@@ -426,7 +431,7 @@ class _ChatRoomScreenState extends ConsumerState<ChatRoomScreen> {
                 ),
                 Text(
                   _replyToMessage!.type == 'audio' ? '🎤 Voice Message' : _replyToMessage!.message,
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  style: TextStyle(fontSize: 12, color: isDark ? AppColors.darkTextLight : Colors.grey[600]),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -494,7 +499,7 @@ class _ChatRoomScreenState extends ConsumerState<ChatRoomScreen> {
                 ),
                 child: Text(
                   message.replyToText!,
-                  style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                  style: TextStyle(fontSize: 11, color: isDark ? AppColors.darkTextLight : Colors.grey[600]),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -523,7 +528,7 @@ class _ChatRoomScreenState extends ConsumerState<ChatRoomScreen> {
                                 loadingBuilder: (c, child, p) => p == null
                                     ? child
                                     : const SizedBox(width: 220, height: 220, child: Center(child: CircularProgressIndicator(strokeWidth: 2))),
-                                errorBuilder: (_, e, s) => const SizedBox(width: 100, height: 100, child: Icon(Icons.broken_image, color: Colors.white)),
+                                errorBuilder: (_, e, s) => const SizedBox(width: 100, height: 100, child: Icon(Icons.broken_image, color: Colors.white70)),
                               ),
                             ),
                           ),
@@ -531,7 +536,7 @@ class _ChatRoomScreenState extends ConsumerState<ChatRoomScreen> {
                       : Text(
                           message.message,
                           style: TextStyle(
-                            color: isMe ? Colors.white : (isDark ? Colors.white : AppColors.text),
+                            color: isMe ? Colors.white : (isDark ? AppColors.darkText : AppColors.text),
                           ),
                         ),
             ),
@@ -541,7 +546,7 @@ class _ChatRoomScreenState extends ConsumerState<ChatRoomScreen> {
                 padding: const EdgeInsets.only(top: 4),
                 child: Wrap(
                   spacing: 4,
-                  children: _buildReactionChips(message, currentUserId),
+                  children: _buildReactionChips(message, currentUserId, isDark: isDark),
                 ),
               ),
             // Read receipt + timestamp
@@ -552,14 +557,14 @@ class _ChatRoomScreenState extends ConsumerState<ChatRoomScreen> {
                 children: [
                   Text(
                     _formatTime(message.timestamp),
-                    style: TextStyle(fontSize: 10, color: Colors.grey[500]),
+                    style: TextStyle(fontSize: 10, color: isDark ? AppColors.darkTextLight : Colors.grey[500]),
                   ),
                   if (isMe) ...([
                     const SizedBox(width: 4),
                     Icon(
                       isRead ? Icons.done_all : Icons.done,
                       size: 14,
-                      color: isRead ? AppColors.primary : Colors.grey[400],
+                      color: isRead ? AppColors.primary : (isDark ? AppColors.darkTextLight : Colors.grey[400]),
                     ),
                   ]),
                 ],
@@ -571,7 +576,7 @@ class _ChatRoomScreenState extends ConsumerState<ChatRoomScreen> {
     );
   }
 
-  List<Widget> _buildReactionChips(Message message, String currentUserId) {
+  List<Widget> _buildReactionChips(Message message, String currentUserId, {required bool isDark}) {
     final grouped = <String, int>{};
     for (final emoji in message.reactions.values) {
       grouped[emoji] = (grouped[emoji] ?? 0) + 1;
@@ -591,7 +596,7 @@ class _ChatRoomScreenState extends ConsumerState<ChatRoomScreen> {
           decoration: BoxDecoration(
             color: myReaction
                 ? AppColors.primary.withValues(alpha: 0.15)
-                : Colors.grey.withValues(alpha: 0.1),
+                : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.withValues(alpha: 0.1)),
             borderRadius: BorderRadius.circular(12),
             border: myReaction ? Border.all(color: AppColors.primary) : null,
           ),
@@ -687,7 +692,7 @@ class _ChatRoomScreenState extends ConsumerState<ChatRoomScreen> {
         color: isDark ? Theme.of(context).cardColor : Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: isDark ? Colors.transparent : Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, -4),
           ),

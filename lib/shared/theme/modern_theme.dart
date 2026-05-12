@@ -124,11 +124,6 @@ class ModernTheme {
   static const Duration microAnimationNormal = Duration(milliseconds: 250);
   static const Duration microAnimationSlow = Duration(milliseconds: 400);
 
-  // Haptic feedback patterns
-  static const HapticFeedbackType buttonPress = HapticFeedbackType.lightImpact;
-  static const HapticFeedbackType success = HapticFeedbackType.mediumImpact;
-  static const HapticFeedbackType error = HapticFeedbackType.heavyImpact;
-
   // Status bar style for light theme
   static SystemUiOverlayStyle get lightStatusBar => const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,

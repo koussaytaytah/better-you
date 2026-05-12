@@ -16,8 +16,9 @@ class RoleSelectionScreen extends ConsumerStatefulWidget {
   const RoleSelectionScreen({super.key});
 
   @override
-  ConsumerState<RoleSelectionScreen> createState =>
-      _RoleSelectionScreenState();
+  ConsumerState<RoleSelectionScreen> createState() {
+    return _RoleSelectionScreenState();
+  }
 }
 
 class _RoleSelectionScreenState extends ConsumerState<RoleSelectionScreen> {

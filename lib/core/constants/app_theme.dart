@@ -15,9 +15,9 @@ class AppColors {
   static const Color danger = Color(0xFFEF4444);
 
   // Dark Mode Colors (High Performance Premium)
-  static const Color darkBackground = Color(0xFF0D0D0D); // True Black
-  static const Color darkSurface = Color(0xFF1A1A1A); // Apple Solid Dark
-  static const Color darkText = Color(0xFFF8FAFC); // Crisp White
+  static const Color darkBackground = Color(0xFF0A0A0A); // True Black
+  static const Color darkSurface = Color(0xFF141414); // Apple Solid Dark
+  static const Color darkText = Color(0xFFF1F5F9); // Crisp White
   static const Color darkTextLight = Color(0xFF94A3B8); // Cool Grey
 }
 
@@ -149,11 +149,43 @@ class AppTheme {
           color: AppColors.darkText,
         ),
       ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.primary,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          textStyle: GoogleFonts.plusJakartaSans(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: AppColors.darkSurface,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.primary, width: 2),
+        ),
+      ),
       cardTheme: CardThemeData(
         color: AppColors.darkSurface,
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: Colors.white.withValues(alpha: 0.08), width: 1),
         ),
       ),
     );

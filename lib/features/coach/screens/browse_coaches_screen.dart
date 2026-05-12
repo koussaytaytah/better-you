@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../../../core/constants/app_theme.dart';
 import 'coach_profile_screen.dart';
 
@@ -14,10 +16,32 @@ class BrowseCoachesScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final filter = ref.watch(_coachFilterProvider);
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       appBar: AppBar(
-        title: Text('Find a Coach', style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         centerTitle: true,
+        title: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.7),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.white,
+              width: 1,
+            ),
+          ),
+          child: Text(
+            'Find a Coach',
+            style: GoogleFonts.plusJakartaSans(
+              fontWeight: FontWeight.w800,
+              fontSize: 16,
+              color: isDark ? Colors.white : Colors.black87,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ),
       ),
       body: Column(
         children: [
@@ -79,7 +103,10 @@ class _SearchHeader extends StatelessWidget {
               return FilterChip(
                 label: Text(tag == 'all' ? 'All' : tag.replaceAll('-', ' ').split(' ').map((w) => w[0].toUpperCase() + w.substring(1)).join(' ')),
                 selected: isSelected,
-                onSelected: (_) => ref.read(_coachFilterProvider.notifier).state = tag,
+                onSelected: (_) {
+                  HapticFeedback.lightImpact();
+                  ref.read(_coachFilterProvider.notifier).state = tag;
+                },
                 selectedColor: AppColors.primary.withValues(alpha: 0.15),
                 checkmarkColor: AppColors.primary,
                 labelStyle: TextStyle(color: isSelected ? AppColors.primary : Colors.grey[700], fontWeight: isSelected ? FontWeight.bold : FontWeight.normal),
@@ -137,7 +164,10 @@ class _CoachList extends StatelessWidget {
           itemBuilder: (context, index) {
             final data = docs[index].data() as Map<String, dynamic>;
             final coachId = docs[index].id;
-            return _CoachCard(coachId: coachId, data: data);
+            return _CoachCard(coachId: coachId, data: data)
+                .animate()
+                .fadeIn(duration: 400.ms, delay: (index * 50).ms)
+                .slideX(begin: 0.1);
           },
         );
       },
@@ -166,9 +196,12 @@ class _CoachCard extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       elevation: 3,
       child: InkWell(
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => CoachProfileScreen(coachId: coachId, data: data)),
-        ),
+        onTap: () {
+          HapticFeedback.lightImpact();
+          Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => CoachProfileScreen(coachId: coachId, data: data)),
+          );
+        },
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -241,9 +274,12 @@ class _CoachCard extends StatelessWidget {
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton(
-                      onPressed: () => Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => CoachProfileScreen(coachId: coachId, data: data)),
-                      ),
+                      onPressed: () {
+                        HapticFeedback.mediumImpact();
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => CoachProfileScreen(coachId: coachId, data: data)),
+                        );
+                      },
                       style: FilledButton.styleFrom(backgroundColor: AppColors.primary, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
                       child: const Text('View Profile & Book'),
                     ),

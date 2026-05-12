@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../../../core/constants/app_theme.dart';
 import '../../../shared/models/user_model.dart';
 import '../../../shared/providers/auth_provider.dart';
@@ -21,9 +23,28 @@ class FriendsScreen extends ConsumerWidget {
       child: Scaffold(
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         appBar: AppBar(
-          title: Text(
-            'Friends',
-            style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          centerTitle: true,
+          title: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.7),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.white,
+                width: 1,
+              ),
+            ),
+            child: Text(
+              'Friends',
+              style: GoogleFonts.plusJakartaSans(
+                fontWeight: FontWeight.w800,
+                fontSize: 16,
+                color: isDark ? Colors.white : Colors.black87,
+                letterSpacing: 0.5,
+              ),
+            ),
           ),
           bottom: const TabBar(
             tabs: [
@@ -82,13 +103,16 @@ class FriendsScreen extends ConsumerWidget {
                 friend.role.name.toUpperCase(),
                 style: const TextStyle(fontSize: 10, color: AppColors.primary),
               ),
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => UserProfileScreen(userId: friend.uid),
-                ),
-              ),
-            ),
+              onTap: () {
+                HapticFeedback.lightImpact();
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => UserProfileScreen(userId: friend.uid),
+                  ),
+                );
+              },
+            ).animate().fadeIn(delay: (index * 50).ms).slideX(begin: 0.1),
             loading: () => const SizedBox(),
             error: (_, _) => const SizedBox(),
           );
@@ -137,6 +161,7 @@ class FriendsScreen extends ConsumerWidget {
                   children: [
                     ElevatedButton(
                       onPressed: () async {
+                        HapticFeedback.mediumImpact();
                         final currentUser = ref.read(currentUserProvider);
                         if (currentUser != null) {
                           await ref
@@ -167,7 +192,7 @@ class FriendsScreen extends ConsumerWidget {
                     ),
                   ],
                 ),
-              );
+              ).animate().fadeIn(delay: (index * 50).ms).slideX(begin: 0.1);
             },
           ),
         );

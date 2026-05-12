@@ -116,7 +116,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           children: [
             Text(
               'Enter your email address and we\'ll send you a link to reset your password.',
-              style: GoogleFonts.plusJakartaSans(fontSize: 14, color: Colors.grey[600]),
+              style: GoogleFonts.plusJakartaSans(fontSize: 14, color: Theme.of(ctx).brightness == Brightness.dark ? AppColors.darkTextLight : Colors.grey[600]),
             ),
             const SizedBox(height: 20),
             CustomTextField(

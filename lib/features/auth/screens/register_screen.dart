@@ -11,7 +11,6 @@ import '../../../shared/widgets/custom_button.dart';
 import '../../../shared/widgets/custom_text_field.dart';
 import '../../../shared/widgets/social_login_buttons.dart';
 import '../../../shared/widgets/modern_card.dart';
-import '../../../shared/theme/modern_theme.dart';
 import '../../../core/utils/auth_error_handler.dart';
 import '../../../features/settings/screens/terms_screen.dart';
 import 'email_verification_screen.dart';
@@ -106,7 +105,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         }
       }
     } catch (e) {
-      if (!context.mounted) return;
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
@@ -208,7 +207,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         prefixIcon: const Icon(Icons.email_outlined),
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) return 'Email is required';
-                          if (!RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\$').hasMatch(value.trim())) {
+                          if (!RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$').hasMatch(value.trim())) {
                             return 'Enter a valid email address';
                           }
                           return null;

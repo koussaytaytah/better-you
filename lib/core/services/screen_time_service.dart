@@ -1,4 +1,4 @@
-import 'package:usage_stats/usage_stats.dart';
+import '../stubs/usage_stats_stub.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';

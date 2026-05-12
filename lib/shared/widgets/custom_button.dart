@@ -73,8 +73,6 @@ class _CustomButtonState extends State<CustomButton>
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     Widget buttonContent = Container(
       height: widget.height,
       decoration: BoxDecoration(

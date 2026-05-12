@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io' show File;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
@@ -66,6 +67,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
   }
 
   Future<void> _pickImage(ImageSource source) async {
+    HapticFeedback.lightImpact();
     final picker = ImagePicker();
     final image = await picker.pickImage(
       source: source,
@@ -85,6 +87,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
   }
 
   Future<void> _startRecording() async {
+    HapticFeedback.lightImpact();
     try {
       if (await Permission.microphone.request().isGranted) {
         final directory = await getTemporaryDirectory();
@@ -105,6 +108,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
   }
 
   Future<void> _stopRecording() async {
+    HapticFeedback.mediumImpact();
     try {
       final path = await _audioRecorder.stop();
       setState(() => _isRecording = false);
@@ -173,6 +177,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
   }
 
   void _sendMessage({String? customText}) async {
+    HapticFeedback.lightImpact();
     final text = customText ?? _controller.text.trim();
     if (text.isEmpty) return;
 
@@ -233,14 +238,31 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: Text(
-          'AI Assistant',
-          style: GoogleFonts.poppins(
-            fontWeight: FontWeight.bold,
-            color: AppColors.text,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: true,
+        title: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.7),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.white,
+              width: 1,
+            ),
+          ),
+          child: Text(
+            'AI Assistant',
+            style: GoogleFonts.plusJakartaSans(
+              fontWeight: FontWeight.w800,
+              fontSize: 16,
+              color: isDark ? Colors.white : Colors.black87,
+              letterSpacing: 0.5,
+            ),
           ),
         ),
       ),

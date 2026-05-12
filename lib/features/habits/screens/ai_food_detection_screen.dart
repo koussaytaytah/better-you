@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
@@ -67,6 +68,7 @@ class _AIFoodDetectionScreenState extends ConsumerState<AIFoodDetectionScreen> {
   }
 
   Future<void> _updateLogAndPop(Map<String, dynamic> detectedItems) async {
+    HapticFeedback.heavyImpact();
     final user = ref.read(currentUserAsyncProvider).value;
     final lastLog = ref.read(todayLogProvider).value;
 
@@ -113,6 +115,7 @@ class _AIFoodDetectionScreenState extends ConsumerState<AIFoodDetectionScreen> {
             const SizedBox(height: 24),
             GestureDetector(
               onTap: () async {
+                HapticFeedback.lightImpact();
                 final XFile? image = await _picker.pickImage(source: ImageSource.camera);
                 if (image != null) {
                   await _analyzeImage(image);
@@ -152,6 +155,7 @@ class _AIFoodDetectionScreenState extends ConsumerState<AIFoodDetectionScreen> {
             const SizedBox(height: 24),
             TextButton.icon(
               onPressed: () async {
+                HapticFeedback.lightImpact();
                 final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
                 if (image != null) {
                   await _analyzeImage(image);
@@ -237,7 +241,10 @@ class _AIFoodDetectionScreenState extends ConsumerState<AIFoodDetectionScreen> {
               children: [
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () {
+                      HapticFeedback.lightImpact();
+                      Navigator.pop(context);
+                    },
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -250,7 +257,10 @@ class _AIFoodDetectionScreenState extends ConsumerState<AIFoodDetectionScreen> {
                   child: ElevatedButton(
                     onPressed: _detectedMacros == null || _detectedMacros!['calories'] == 0
                         ? null
-                        : () => _updateLogAndPop(_detectedMacros!),
+                        : () {
+                          HapticFeedback.mediumImpact();
+                          _updateLogAndPop(_detectedMacros!);
+                        },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       padding: const EdgeInsets.symmetric(vertical: 16),

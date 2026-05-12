@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_theme.dart';
@@ -40,7 +41,9 @@ class CoachProfileScreen extends ConsumerWidget {
             actions: [
               IconButton(
                 icon: const Icon(Icons.share_outlined, color: Colors.white),
-                onPressed: () {},
+                onPressed: () {
+                  HapticFeedback.lightImpact();
+                },
               ),
             ],
           ),
@@ -149,6 +152,7 @@ class CoachProfileScreen extends ConsumerWidget {
             builder: (context, ref, _) {
               return FilledButton.icon(
                 onPressed: () {
+                  HapticFeedback.mediumImpact();
                   final userAsync = ref.read(currentUserAsyncProvider);
                   final user = userAsync.value;
                   if (user == null) return;

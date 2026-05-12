@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
-import 'package:usage_stats/usage_stats.dart';
+import '../stubs/usage_stats_stub.dart';
 import 'package:android_intent_plus/android_intent.dart';
 import 'package:android_intent_plus/flag.dart';
 import 'package:shared_preferences/shared_preferences.dart';

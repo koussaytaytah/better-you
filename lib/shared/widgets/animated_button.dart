@@ -348,7 +348,6 @@ class _AnimatedFABState extends State<AnimatedFAB>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
-  late Animation<double> _pulseAnimation;
 
   @override
   void initState() {
@@ -359,9 +358,6 @@ class _AnimatedFABState extends State<AnimatedFAB>
     );
     _scaleAnimation = Tween<double>(begin: 1.0, end: 0.9).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
-    );
-    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.05).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
     );
   }
 

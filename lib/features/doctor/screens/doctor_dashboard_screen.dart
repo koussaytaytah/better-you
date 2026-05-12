@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -105,11 +106,16 @@ class _DoctorDashboardScreenState extends ConsumerState<DoctorDashboardScreen>
                       ),
                       IconButton(
                         icon: const Icon(Icons.notifications_outlined, color: Colors.white),
-                        onPressed: () {},
+                        onPressed: () {
+                          HapticFeedback.lightImpact();
+                        },
                       ),
                       IconButton(
                         icon: const Icon(Icons.logout, color: Colors.white),
-                        onPressed: () => ref.read(authServiceProvider).signOut(),
+                        onPressed: () {
+                          HapticFeedback.mediumImpact();
+                          ref.read(authServiceProvider).signOut();
+                        },
                       ),
                     ],
                   ),
@@ -398,10 +404,12 @@ class _PatientCard extends StatelessWidget {
   }
 
   void _showPrescribeDialog(BuildContext context) {
+    HapticFeedback.lightImpact();
     _showDoctorPrescribeDialog(context, ref, doctor, patientId, data['name'] ?? 'Patient');
   }
 
   Future<void> _openChat(BuildContext context) async {
+    HapticFeedback.lightImpact();
     final participants = [doctor.uid, patientId]..sort();
     final roomId = participants.join('_');
     final roomDoc = await FirebaseFirestore.instance.collection('chat_rooms').doc(roomId).get();
@@ -911,6 +919,7 @@ void _showDoctorPrescribeDialog(BuildContext context, WidgetRef ref, UserModel d
         TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
         ElevatedButton(
           onPressed: () async {
+            HapticFeedback.mediumImpact();
             if (controller.text.trim().isEmpty) return;
             final title = controller.text.trim();
             await FirebaseFirestore.instance

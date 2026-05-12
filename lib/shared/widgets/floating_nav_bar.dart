@@ -138,16 +138,17 @@ class _FloatingNavBarState extends State<FloatingNavBar>
                 AnimatedContainer(
                   duration: ModernTheme.microAnimationFast,
                   curve: Curves.easeOutCubic,
-                  transform: Matrix4.identity()
-                    ..scale(isSelected ? 1.1 : 1.0),
-                  child: Icon(
-                    isSelected ? item.activeIcon : item.icon,
-                    size: widget.iconSize,
-                    color: isSelected
-                        ? const Color(0xFF00A86B)
-                        : (isDark
-                            ? Colors.white.withValues(alpha: 0.5)
-                            : Colors.black.withValues(alpha: 0.5)),
+                  child: Transform.scale(
+                    scale: isSelected ? 1.1 : 1.0,
+                    child: Icon(
+                      isSelected ? item.activeIcon : item.icon,
+                      size: widget.iconSize,
+                      color: isSelected
+                          ? const Color(0xFF00A86B)
+                          : (isDark
+                              ? Colors.white.withValues(alpha: 0.5)
+                              : Colors.black.withValues(alpha: 0.5)),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 4),

@@ -1,4 +1,5 @@
 import 'dart:io' show File;
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -246,22 +247,40 @@ class _CommunityFeedScreenState extends ConsumerState<CommunityFeedScreen> {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        // ...
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: true,
         title: _isSearching
             ? TextField(
                 controller: _searchController,
                 autofocus: true,
-                style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(
+                style: TextStyle(color: isDark ? Colors.white : AppColors.text),
+                decoration: InputDecoration(
                   hintText: 'Search users...',
-                  hintStyle: TextStyle(color: Colors.white70),
+                  hintStyle: TextStyle(color: isDark ? Colors.white54 : Colors.grey[600]),
                   border: InputBorder.none,
                 ),
                 onChanged: (val) => setState(() {}),
               )
-            : Text(
-                'Community Feed',
-                style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+            : Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.7),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.white,
+                    width: 1,
+                  ),
+                ),
+                child: Text(
+                  'Community Feed',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                    color: isDark ? Colors.white : AppColors.text,
+                    letterSpacing: 0.5,
+                  ),
+                ),
               ),
         actions: [
           IconButton(
@@ -305,46 +324,64 @@ class _CommunityFeedScreenState extends ConsumerState<CommunityFeedScreen> {
                     ),
               ],
             ),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const NotificationsScreen()),
-            ),
+            onPressed: () {
+              HapticFeedback.lightImpact();
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+              );
+            },
           ),
           IconButton(
             icon: const Icon(Icons.auto_awesome_motion_outlined),
             tooltip: 'Group Quests',
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const GroupQuestsScreen()),
-            ),
+            onPressed: () {
+              HapticFeedback.lightImpact();
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const GroupQuestsScreen()),
+              );
+            },
           ),
           IconButton(
             icon: const Icon(Icons.people_outline),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const FriendsScreen()),
-            ),
+            onPressed: () {
+              HapticFeedback.lightImpact();
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const FriendsScreen()),
+              );
+            },
           ),
           IconButton(
             icon: const Icon(Icons.leaderboard_outlined),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const LeaderboardScreen()),
-            ),
+            onPressed: () {
+              HapticFeedback.lightImpact();
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const LeaderboardScreen()),
+              );
+            },
           ),
           IconButton(
             icon: Icon(_isSearching ? Icons.close : Icons.search),
-            onPressed: () => setState(() {
-              _isSearching = !_isSearching;
-              if (!_isSearching) _searchController.clear();
-            }),
+            onPressed: () {
+              HapticFeedback.lightImpact();
+              setState(() {
+                _isSearching = !_isSearching;
+                if (!_isSearching) _searchController.clear();
+              });
+            },
           ),
           IconButton(
             icon: const Icon(Icons.chat_bubble_outline),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const GlobalChatScreen()),
-            ),
+            onPressed: () {
+              HapticFeedback.lightImpact();
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const GlobalChatScreen()),
+              );
+            },
           ),
         ],
       ),
@@ -484,7 +521,7 @@ class _CommunityFeedScreenState extends ConsumerState<CommunityFeedScreen> {
         color: isDark ? Theme.of(context).cardColor : Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: isDark ? Colors.transparent : Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -511,7 +548,7 @@ class _CommunityFeedScreenState extends ConsumerState<CommunityFeedScreen> {
                     ),
                     filled: true,
                     fillColor: isDark
-                        ? Colors.black.withValues(alpha: 0.2)
+                        ? Colors.white.withValues(alpha: 0.05)
                         : AppColors.background,
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 20,
@@ -572,8 +609,8 @@ class _CommunityFeedScreenState extends ConsumerState<CommunityFeedScreen> {
                       onTap: () => setState(() => _selectedImage = null),
                       child: Container(
                         padding: const EdgeInsets.all(4),
-                        decoration: const BoxDecoration(
-                          color: Colors.black54,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.8),
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(
@@ -603,7 +640,7 @@ class _CommunityFeedScreenState extends ConsumerState<CommunityFeedScreen> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: isDark ? Colors.transparent : Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -709,7 +746,7 @@ class _CommunityFeedScreenState extends ConsumerState<CommunityFeedScreen> {
                 width: double.infinity,
                 constraints: const BoxConstraints(maxHeight: 400),
                 decoration: BoxDecoration(
-                  color: Colors.grey.withValues(alpha: 0.1),
+                  color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.grey.withValues(alpha: 0.1),
                 ),
                 child: Image.network(
                   post.imageUrl!,

@@ -52,35 +52,56 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Food Database'),
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: true,
+        title: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.7),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.white,
+              width: 1,
+            ),
+          ),
+          child: Text(
+            'Food Database',
+            style: GoogleFonts.plusJakartaSans(
+              fontWeight: FontWeight.w800,
+              fontSize: 16,
+              color: isDark ? Colors.white : Colors.black87,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ),
+        iconTheme: IconThemeData(color: isDark ? Colors.white : AppColors.text),
       ),
       body: Column(
         children: [
           Container(
-            color: AppColors.primary,
+            color: isDark ? const Color(0xFF00A86B).withValues(alpha: 0.15) : AppColors.primary.withValues(alpha: 0.1),
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             child: TextField(
               controller: _searchController,
               autofocus: true,
               onChanged: _onChanged,
-              style: const TextStyle(color: Colors.white),
+              style: TextStyle(color: isDark ? Colors.white : AppColors.text),
               decoration: InputDecoration(
                 hintText: 'Search food (e.g. Coca Cola, banana)',
-                hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
-                prefixIcon: const Icon(Icons.search, color: Colors.white),
+                hintStyle: TextStyle(color: isDark ? Colors.white.withValues(alpha: 0.6) : Colors.grey[600]),
+                prefixIcon: Icon(Icons.search, color: isDark ? Colors.white.withValues(alpha: 0.7) : Colors.grey[600]),
                 suffixIcon: _searchController.text.isEmpty
                     ? null
                     : IconButton(
-                        icon: const Icon(Icons.clear, color: Colors.white),
+                        icon: Icon(Icons.clear, color: isDark ? Colors.white : Colors.grey[600]),
                         onPressed: () {
                           _searchController.clear();
                           setState(() => _results = []);
                         },
                       ),
                 filled: true,
-                fillColor: Colors.white.withValues(alpha: 0.15),
+                fillColor: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.white,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(14),
                   borderSide: BorderSide.none,

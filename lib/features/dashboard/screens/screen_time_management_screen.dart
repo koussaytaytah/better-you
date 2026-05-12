@@ -10,6 +10,7 @@ import '../../../core/constants/app_constants.dart';
 import '../../../core/services/screen_time_service.dart';
 import 'package:installed_apps/installed_apps.dart';
 import 'package:installed_apps/app_info.dart';
+import '../../../core/stubs/usage_stats_stub.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -127,12 +128,29 @@ class _ScreenTimeManagementScreenState
     return Scaffold(
       backgroundColor: isDark ? Colors.black : Colors.grey[50],
       appBar: AppBar(
-        title: Text(
-          'App Limits',
-          style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
-        ),
-        elevation: 0,
         backgroundColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: true,
+        title: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.7),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.white,
+              width: 1,
+            ),
+          ),
+          child: Text(
+            'App Limits',
+            style: GoogleFonts.plusJakartaSans(
+              fontWeight: FontWeight.w800,
+              fontSize: 16,
+              color: isDark ? Colors.white : Colors.black87,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ),
         foregroundColor: isDark ? Colors.white : Colors.black,
       ),
       body: _isLoading
@@ -192,7 +210,10 @@ class _ScreenTimeManagementScreenState
             ),
           ),
           TextButton(
-            onPressed: () => _showPermissionDialog(),
+            onPressed: () {
+              HapticFeedback.lightImpact();
+              _showPermissionDialog();
+            },
             child: const Text('SETUP', style: TextStyle(fontSize: 12)),
           ),
         ],
@@ -321,11 +342,14 @@ class _ScreenTimeManagementScreenState
                   const SizedBox(width: 12),
                   if (!isLimited)
                     InkWell(
-                      onTap: () => _showSetLimitDialog(
-                        e.key,
-                        detail?.name ?? e.key,
-                        user,
-                      ),
+                      onTap: () {
+                        HapticFeedback.lightImpact();
+                        _showSetLimitDialog(
+                          e.key,
+                          detail?.name ?? e.key,
+                          user,
+                        );
+                      },
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 10,
@@ -386,8 +410,10 @@ class _ScreenTimeManagementScreenState
                 color: Colors.transparent,
                 child: InkWell(
                   borderRadius: BorderRadius.circular(24),
-                  onTap: () =>
-                      _showSetLimitDialog(pkg, detail?.name ?? pkg, user),
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    _showSetLimitDialog(pkg, detail?.name ?? pkg, user);
+                  },
                   child: Padding(
                     padding: const EdgeInsets.all(16),
                     child: Row(
@@ -528,6 +554,7 @@ class _ScreenTimeManagementScreenState
                             alpha: 0.5,
                           ),
                           onChanged: (val) {
+                            HapticFeedback.lightImpact();
                             if (val) {
                               _showSetLimitDialog(
                                 pkg,
@@ -625,6 +652,7 @@ class _ScreenTimeManagementScreenState
                           )
                           .toList(),
                       onChanged: (val) {
+                        HapticFeedback.lightImpact();
                         setDialogState(() {
                           if (val == 'Custom') {
                             isCustom = true;
@@ -672,6 +700,7 @@ class _ScreenTimeManagementScreenState
             ),
             ElevatedButton(
               onPressed: () async {
+                HapticFeedback.mediumImpact();
                 final limit = int.tryParse(limitController.text) ?? 60;
                 final quest = isCustom
                     ? customQuestController.text.trim()
@@ -753,6 +782,7 @@ class _ScreenTimeManagementScreenState
                         padding: const EdgeInsets.only(bottom: 12),
                         child: InkWell(
                           onTap: () async {
+                            HapticFeedback.lightImpact();
                             if (!entry.value) {
                               if (entry.key.contains('Usage')) {
                                 await _service.requestUsagePermission();

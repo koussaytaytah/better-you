@@ -1,5 +1,6 @@
 import 'package:better_you/features/settings/screens/settings_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -59,6 +60,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   Future<void> _saveProfile() async {
+    HapticFeedback.mediumImpact();
     final user = ref.read(currentUserProvider);
     if (user == null) return;
 
@@ -99,6 +101,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   Future<void> _uploadProfilePhoto() async {
+    HapticFeedback.lightImpact();
     final user = ref.read(currentUserProvider);
     if (user == null) return;
 
@@ -108,7 +111,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     if (pickedFile == null) return;
 
     setState(() => _isUploadingPhoto = true);
-    
+
     try {
       final file = File(pickedFile.path);
       String? downloadUrl;
@@ -156,6 +159,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   Widget build(BuildContext context) {
     final user = ref.watch(currentUserProvider);
     if (user == null) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final logsAsync = ref.watch(dailyLogsProvider(user.uid));
     final nextLevelXp = user.level * 1000;
@@ -163,7 +167,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final rank = user.getRankName();
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: isDark ? AppColors.darkBackground : AppColors.background,
       body: CustomScrollView(
         slivers: [
           // ── Hero App Bar ──────────────────────────────────────────────────
@@ -174,7 +178,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             actions: [
               IconButton(
                 icon: const Icon(Icons.settings_outlined, color: Colors.white),
-                onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SettingsScreen())),
+                onPressed: () {
+                  HapticFeedback.lightImpact();
+                  Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SettingsScreen()));
+                },
               ),
               const SizedBox(width: 4),
             ],
@@ -279,24 +286,24 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           // ── Badges ────────────────────────────────────────────────────────
           if (user.badges.isNotEmpty) ...[
             SliverToBoxAdapter(child: _buildSectionHeader('Trophy Case', Icons.emoji_events, Colors.amber)),
-            SliverToBoxAdapter(child: _buildBadgesGrid(user)),
+            SliverToBoxAdapter(child: _buildBadgesGrid(user, isDark: isDark)),
           ],
 
           // ── Activity Feed ─────────────────────────────────────────────────
           SliverToBoxAdapter(child: _buildSectionHeader('Recent Activity', Icons.timeline, AppColors.primary)),
-          SliverToBoxAdapter(child: _buildActivityFeed(logsAsync)),
+          SliverToBoxAdapter(child: _buildActivityFeed(logsAsync, isDark: isDark)),
 
           // ── Tools ─────────────────────────────────────────────────────────
           SliverToBoxAdapter(child: _buildSectionHeader('Health Tools', Icons.health_and_safety, AppColors.success)),
-          SliverToBoxAdapter(child: _buildToolsSection()),
+          SliverToBoxAdapter(child: _buildToolsSection(isDark: isDark)),
 
           // ── Edit Profile ──────────────────────────────────────────────────
           SliverToBoxAdapter(child: _buildSectionHeader('Edit Profile', Icons.edit, AppColors.secondary)),
           SliverToBoxAdapter(child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Column(children: [
-              _buildTextField('Full Name', _nameController, Icons.person_outline),
-              _buildTextField('Target Weight (kg)', _targetWeightController, Icons.track_changes, isNumber: true),
+              _buildTextField('Full Name', _nameController, Icons.person_outline, isDark: isDark),
+              _buildTextField('Target Weight (kg)', _targetWeightController, Icons.track_changes, isNumber: true, isDark: isDark),
               _buildGoalSelector(),
               const SizedBox(height: 16),
               SizedBox(width: double.infinity, child: ElevatedButton(
@@ -312,7 +319,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               )),
               const SizedBox(height: 10),
               SizedBox(width: double.infinity, child: OutlinedButton.icon(
-                onPressed: () => ref.read(authServiceProvider).signOut(),
+                onPressed: () {
+                  HapticFeedback.mediumImpact();
+                  ref.read(authServiceProvider).signOut();
+                },
                 icon: const Icon(Icons.logout, color: AppColors.danger),
                 label: Text('Logout', style: GoogleFonts.inter(color: AppColors.danger, fontWeight: FontWeight.w600)),
                 style: OutlinedButton.styleFrom(
@@ -345,7 +355,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  Widget _buildActivityFeed(AsyncValue logsAsync) {
+  Widget _buildActivityFeed(AsyncValue logsAsync, {required bool isDark}) {
     return logsAsync.when(
       data: (allLogs) {
         final logs = (allLogs as List).take(7).toList();
@@ -354,8 +364,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Container(
               padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16),
-                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8)]),
+              decoration: BoxDecoration(color: isDark ? AppColors.darkSurface : Colors.white, borderRadius: BorderRadius.circular(16),
+                  boxShadow: [BoxShadow(color: isDark ? Colors.transparent : Colors.black.withValues(alpha: 0.04), blurRadius: 8)]),
               child: Center(child: Text('No logs yet — start tracking!', style: GoogleFonts.inter(color: AppColors.textLight))),
             ),
           );
@@ -371,8 +381,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 margin: const EdgeInsets.only(bottom: 8),
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: Colors.white, borderRadius: BorderRadius.circular(14),
-                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8)],
+                  color: isDark ? AppColors.darkSurface : Colors.white, borderRadius: BorderRadius.circular(14),
+                  boxShadow: [BoxShadow(color: isDark ? Colors.transparent : Colors.black.withValues(alpha: 0.04), blurRadius: 8)],
                 ),
                 child: Row(children: [
                   Container(
@@ -415,7 +425,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  Widget _buildBadgesGrid(UserModel user) {
+  Widget _buildBadgesGrid(UserModel user, {required bool isDark}) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: GridView.builder(
@@ -428,7 +438,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           return Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: isDark ? AppColors.darkSurface : Colors.white,
               border: Border.all(color: config.color.withValues(alpha: 0.3)),
               borderRadius: BorderRadius.circular(14),
               boxShadow: [BoxShadow(color: config.color.withValues(alpha: 0.1), blurRadius: 8)],
@@ -452,7 +462,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   String _fmtNum(double v) => v >= 1000 ? '${(v / 1000).toStringAsFixed(1)}k' : v.toInt().toString();
 
-  Widget _buildToolsSection() {
+  Widget _buildToolsSection({required bool isDark}) {
     return Column(
       children: [
         _buildToolTile(
@@ -460,42 +470,58 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           'Detailed health insights',
           Icons.bar_chart_rounded,
           Colors.blue,
-          () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const StatisticsScreen()),
-          ),
+          () {
+            HapticFeedback.lightImpact();
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const StatisticsScreen()),
+            );
+          },
+          isDark: isDark,
         ),
         _buildToolTile(
           'BMI Calculator',
           'Track your body index',
           Icons.monitor_weight_rounded,
           Colors.teal,
-          () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const BMICalculatorScreen()),
-          ),
+          () {
+            HapticFeedback.lightImpact();
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const BMICalculatorScreen()),
+            );
+          },
+          isDark: isDark,
         ),
         _buildToolTile(
           'Screen Time',
           'Manage app limits',
           Icons.screen_lock_portrait_rounded,
           Colors.purple,
-          () => Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => const ScreenTimeManagementScreen(),
-            ),
-          ),
+          () {
+            HapticFeedback.lightImpact();
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const ScreenTimeManagementScreen(),
+              ),
+            );
+          },
+          isDark: isDark,
         ),
         _buildToolTile(
           'History Calendar',
           'View your progress',
           Icons.calendar_month_rounded,
           Colors.green,
-          () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const ProgressCalendarScreen()),
-          ),
+          () {
+            HapticFeedback.lightImpact();
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ProgressCalendarScreen()),
+            );
+          },
+          isDark: isDark,
         ),
       ],
     );
@@ -506,8 +532,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     String subtitle,
     IconData icon,
     Color color,
-    VoidCallback onTap,
-  ) {
+    VoidCallback onTap, {
+    required bool isDark,
+  }) {
     return GlassCard(
       margin: const EdgeInsets.only(bottom: 12),
       borderRadius: 24,
@@ -533,7 +560,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ),
                 Text(
                   subtitle,
-                  style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey),
+                  style: GoogleFonts.poppins(fontSize: 12, color: isDark ? AppColors.darkTextLight : Colors.grey),
                 ),
               ],
             ),
@@ -541,13 +568,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: Colors.grey.withValues(alpha: 0.1),
+              color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
-            child: const Icon(
+            child: Icon(
               Icons.arrow_forward_ios_rounded,
               size: 12,
-              color: Colors.grey,
+              color: isDark ? AppColors.darkTextLight : Colors.grey,
             ),
           ),
         ],
@@ -560,6 +587,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     TextEditingController controller,
     IconData icon, {
     bool isNumber = false,
+    required bool isDark,
   }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -571,7 +599,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             style: GoogleFonts.poppins(
               fontSize: 14,
               fontWeight: FontWeight.w600,
-              color: Colors.grey[600],
+              color: isDark ? AppColors.darkTextLight : Colors.grey[600],
             ),
           ),
           const SizedBox(height: 8),
@@ -582,9 +610,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             decoration: InputDecoration(
               prefixIcon: Icon(icon, color: AppColors.primary),
               filled: true,
-              fillColor: Theme.of(context).brightness == Brightness.light
-                  ? Colors.grey[100]
-                  : Colors.white.withValues(alpha: 0.05),
+              fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey[100],
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(20),
                 borderSide: BorderSide.none,
@@ -607,9 +633,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           value: _goal,
           icon: const Icon(Icons.keyboard_arrow_down_rounded),
           style: GoogleFonts.poppins(
-            color: Theme.of(context).brightness == Brightness.light
-                ? Colors.black87
-                : Colors.white,
+            color: Theme.of(context).brightness == Brightness.dark ? AppColors.darkText : Colors.black87,
             fontWeight: FontWeight.w600,
           ),
           items: _goals

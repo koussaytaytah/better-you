@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -124,12 +125,18 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                               IconButton(
                                 icon: const Icon(Icons.launch, color: Colors.white),
                                 tooltip: 'Switch to User Mode',
-                                onPressed: () => context.push('/dashboard'),
+                                onPressed: () {
+                                  HapticFeedback.lightImpact();
+                                  context.push('/dashboard');
+                                },
                               ),
                               IconButton(
                                 icon: const Icon(Icons.logout, color: Colors.white),
                                 tooltip: 'Logout',
-                                onPressed: () => ref.read(authServiceProvider).signOut(),
+                                onPressed: () {
+                                  HapticFeedback.mediumImpact();
+                                  ref.read(authServiceProvider).signOut();
+                                },
                               ),
                             ],
                           ),
@@ -210,6 +217,7 @@ class _UserManagementTabState extends ConsumerState<_UserManagementTab> {
   bool _isLoading = false;
 
   Future<void> _exportUsersToCSV() async {
+    HapticFeedback.lightImpact();
     setState(() => _isLoading = true);
     try {
       final snapshot = await FirebaseFirestore.instance.collection('users').get();
@@ -246,6 +254,7 @@ class _UserManagementTabState extends ConsumerState<_UserManagementTab> {
   }
 
   Future<void> _awardBadge(String userId, String badgeName) async {
+    HapticFeedback.mediumImpact();
     try {
       await ref.read(userRepositoryProvider).awardBadge(userId, badgeName);
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Awarded "$badgeName" trophy!')));
@@ -275,6 +284,7 @@ class _UserManagementTabState extends ConsumerState<_UserManagementTab> {
   }
 
   Future<void> _performAction(String userId, String action) async {
+    HapticFeedback.mediumImpact();
     setState(() => _isLoading = true);
     try {
       if (action == 'add_xp') {
@@ -665,6 +675,7 @@ class _PendingList extends StatelessWidget {
   }
 
   void _approveUser(String uid) {
+    HapticFeedback.mediumImpact();
     FirebaseFirestore.instance.collection('users').doc(uid).update({
       'verificationStatus': 'approved',
       'isVerified': true,
@@ -672,6 +683,7 @@ class _PendingList extends StatelessWidget {
   }
 
   void _rejectUser(String uid) {
+    HapticFeedback.heavyImpact();
     FirebaseFirestore.instance.collection('users').doc(uid).update({
       'verificationStatus': 'rejected',
       'isVerified': false,

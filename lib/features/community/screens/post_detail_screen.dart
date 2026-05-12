@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
@@ -20,7 +21,29 @@ class PostDetailScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text('Post'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: true,
+        title: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.7),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.white,
+              width: 1,
+            ),
+          ),
+          child: Text(
+            'Post',
+            style: GoogleFonts.plusJakartaSans(
+              fontWeight: FontWeight.w800,
+              fontSize: 16,
+              color: isDark ? Colors.white : Colors.black87,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ),
       ),
       body: postAsync.when(
         data: (post) {
@@ -59,12 +82,15 @@ class PostDetailScreen extends ConsumerWidget {
           Row(
             children: [
               GestureDetector(
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => UserProfileScreen(userId: post.userId),
-                  ),
-                ),
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => UserProfileScreen(userId: post.userId),
+                    ),
+                  );
+                },
                 child: CircleAvatar(
                   backgroundColor: AppColors.primary.withValues(alpha: 0.1),
                   child: Text(
@@ -127,6 +153,7 @@ class PostDetailScreen extends ConsumerWidget {
             children: [
               IconButton(
                 onPressed: () {
+                  HapticFeedback.lightImpact();
                   if (currentUser != null) {
                     ref.read(postRepositoryProvider).likePost(
                           post.id,
